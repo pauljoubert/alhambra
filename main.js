@@ -252,3 +252,75 @@ canvas.height = window.innerHeight;
 pattern = new Pattern(canvas.width, canvas.height);
 
 pattern.draw(ctx);
+
+
+
+document.addEventListener('keydown', (event) => {
+
+    shiftSpeed = 5
+
+    switch (event.code) {
+        case 'Minus':
+            pattern.transformation.scale *= 0.99;
+            break;
+        case 'Equal':
+            pattern.transformation.scale *= 1.01;
+            break;
+        case 'ArrowRight':
+            pattern.transformation.shiftX += shiftSpeed;
+            break;
+        case 'ArrowLeft':
+            pattern.transformation.shiftX -= shiftSpeed;
+            break;
+        case 'ArrowUp':
+            pattern.transformation.shiftY -= shiftSpeed;
+            break;
+        case 'ArrowDown':
+            pattern.transformation.shiftY += shiftSpeed;
+            break;
+    }
+
+    pattern.draw(ctx);
+
+}, false);
+
+let mouseX = 0;
+let mouseY = 0;
+let mouseDown = false;
+
+
+document.addEventListener('mousedown', e => {
+    mouseX = e.offsetX;
+    mouseY = e.offsetY;
+    mouseDown = true;
+});
+
+
+document.addEventListener('mousemove', e => {
+    if (mouseDown === true) {
+        pattern.transformation.shiftX += e.offsetX - mouseX;
+        pattern.transformation.shiftY += e.offsetY - mouseY;
+        pattern.draw(ctx);
+        mouseX = e.offsetX;
+        mouseY = e.offsetY;
+    }
+});
+
+document.addEventListener('mouseup', e => {
+    if (mouseDown === true) {
+        pattern.transformation.shiftX += e.offsetX - mouseX;
+        pattern.transformation.shiftY += e.offsetY - mouseY;
+        pattern.draw(ctx);
+        mouseDown = false;
+    }
+});
+
+document.addEventListener('wheel', e => {
+    if (e.deltaY === 0) {
+        return;
+    }
+    let r = e.deltaY > 0 ? 0.99 : 1.01;
+    pattern.transformation.scale *= r;
+    pattern.draw(ctx);
+});
+
