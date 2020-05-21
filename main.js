@@ -1,46 +1,5 @@
 
 
-class Unit {
-
-    constructor(x, y, size) {
-        this.x = x;
-        this.y = y;
-        this.size = size;
-    }
-
-    drawTransformed(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.size, this.size);
-        this.draw(ctx);
-        ctx.restore();
-    }
-
-    draw(ctx) {
-        throw new Error("Not implemented");
-    }
-
-    boundingBoxTransformed() {
-        let newBoundingBox = [];
-        for (const point of this.boundingBox()) {
-            let p = Array.from(point);
-            p[0] *= this.size;
-            p[1] *= this.size;
-            p[0] += this.x;
-            p[1] += this.y;
-            newBoundingBox.push(p);
-        }
-        return newBoundingBox;
-    }
-
-    boundingBox() {
-        // Should include the border.
-        throw new Error("Not implemented");
-    }
-
-}
-
-
 function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
@@ -69,16 +28,16 @@ function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
         }
         return cx + (left ? 1 : -1);
     }
-
+    
     let leftMostX = search([0, 0], true);
     let rightMostX = search([0, 0], false);
-
+    
     let shifts = [];
     for (let x = leftMostX; x <= rightMostX; x++) {
         shifts.push([x, 0]);
     }
     let originalBounds = [leftMostX, rightMostX];
-
+    
     function fillVertical(shifts, originalBounds, up=true) {
         let valid = true;
         let currentY = 0;
@@ -113,80 +72,77 @@ function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
 }
 
 
+function transformDraw(draw, transformation) {
+    return function(ctx) {
+        ctx.save();
+        ctx.translate(transformation.shiftX, transformation.shiftY);
+        ctx.scale(transformation.scale, transformation.scale);
+        draw(ctx);
+        ctx.restore();
+    }
+}
+
+
+function transformBoundingBox(boundingBox, transformation) {
+    let newBoundingBox = [];
+    for (const point of boundingBox) {
+        let p = Array.from(point);
+        p[0] *= transformation.scale;
+        p[1] *= transformation.scale;
+        p[0] += transformation.shiftX;
+        p[1] += transformation.shiftY;
+        newBoundingBox.push(p);
+    }
+    return newBoundingBox;
+}
+
+
+function scaleVector(vector, scale) {
+    return [vector[0] * scale, vector[1] * scale];
+}
+
+
 class Tiling {
     // Unit repeated across a 2D grid.
 
-    constructor(unit, vectorA, vectorB) {
+    constructor(unit, transformation, vectorA, vectorB, canvasWidth, canvasHeight) {
         this.unit = unit;
+        this.transformation = transformation;
         this.vectorA = vectorA;
         this.vectorB = vectorB;
+        this.canvasWidth = canvasWidth;
+        this.canvasHeight = canvasHeight;
     }
 
-    draw(ctx, canvasWidth, canvasHeight) {
-        let shifts = calculateShifts(
-            this.unit.boundingBoxTransformed(), this.vectorA, this.vectorB, canvasWidth, canvasHeight
+    draw(ctx) {
+        const boundingBox = transformBoundingBox(this.unit.boundingBox, this.transformation);
+        let transformedDraw = transformDraw(this.unit.draw, this.transformation);
+        let vectorA = scaleVector(this.vectorA, this.transformation.scale);
+        let vectorB = scaleVector(this.vectorB, this.transformation.scale);
+        const shifts = calculateShifts(
+            boundingBox, vectorA, vectorB, this.canvasWidth, this.canvasHeight
         );
         for (const shift of shifts) {
             ctx.save();
             ctx.translate(
-                this.vectorA[0] * shift[0] + this.vectorB[0] * shift[1],
-                this.vectorA[1] * shift[0] + this.vectorB[1] * shift[1],
+                vectorA[0] * shift[0] + vectorB[0] * shift[1],
+                vectorA[1] * shift[0] + vectorB[1] * shift[1],
             );
-            this.unit.drawTransformed(ctx);
+            transformedDraw(ctx);
             ctx.restore();
         }
     }
 
 }
 
+
 function toCorners(topLeft, bottomRight) {
     return [topLeft, [topLeft[0], bottomRight[1]], bottomRight, [bottomRight[0], topLeft[1]]];
 }
 
 
-class Square extends Unit {
-
-    constructor(x, y, size) {
-        super(x, y, size);
-    }
-
-    draw(ctx) {
-        ctx.rect(0, 0, 1, 1);
-    }
-
-    boundingBox() {
-        return toCorners([0, 0], [1, 1]);
-    }
-
-}
-
-
-class Circle extends Unit {
-
-    constructor(x, y, radius) {
-        super(x, y, radius);
-    }
-
-    draw(ctx) {
-        ctx.moveTo(1, 0);
-        ctx.arc(0, 0, 1, 0, 2 * Math.PI);
-    }
-
-    boundingBox() {
-        return toCorners([-1, -1], [1, 1]);
-    }
-
-}
-
-
-class LittleBirdStar extends Unit {
-    // See page 84.
-
-    constructor(x, y, radius) {
-        super(x, y, radius);
-    }
-
-    draw(ctx) {
+const littleBirdStar = {
+    draw: function(ctx) {
         let r = Math.sqrt(3) - 1;
 
         ctx.moveTo(r, 0);
@@ -198,22 +154,13 @@ class LittleBirdStar extends Unit {
         }
         ctx.lineTo(r, 0);
         ctx.restore();
-    }
-
-    boundingBox() {
-        return toCorners([-1, -1], [1, 1]);
-    }
-
+    },
+    boundingBox: toCorners([-1, -1], [1, 1]),
 }
 
 
-class LittleBirdWing extends Unit {
-
-    constructor(x, y, radius) {
-        super(x, y, radius);
-    }
-
-    draw(ctx) {
+const littleBirdWing = {
+    draw: function(ctx) {
         let sqrt3 = Math.sqrt(3);
         let r = sqrt3 - 1;
 
@@ -230,13 +177,11 @@ class LittleBirdWing extends Unit {
         }
 
         ctx.restore();
-    }
-
-    boundingBox() {
+    },
+    boundingBox: (function() {
         let r = 3 * Math.sqrt(3) / 2;
         return toCorners([-r, -r], [r, r]);
-    }
-
+    })()
 }
 
 
@@ -259,43 +204,43 @@ colours = {
     "blue": "rgb(81, 122, 184)",
 }
 
-// square = new Square(300, 400, 50);
-// tiling = new Tiling(square, [150, 0], [0, 110]);
 x = 400;
 y = 400;
 radius = 40;
 
-// tiling = new Tiling(new Circle(x, y, radius), [0, radius], [(Math.sqrt(3) / 2) * radius, radius / 2]);
-// tiling.draw(ctx, width, height);
-
 ctx.strokeStyle = "black";
 ctx.lineWidth = 2;
 
-starTiling = new Tiling(new LittleBirdStar(x, y, radius), [0, 6 * radius], [Math.sqrt(3) * radius, 3 * radius]);
-// starTiling.draw(ctx, width, height);
+transformation = {shiftX: x, shiftY: y, scale: radius};
 
-wingTiling = new Tiling(new LittleBirdWing(x, y, radius), [0, 6 * radius], [Math.sqrt(3) * radius, 3 * radius]);
-// wingTiling.draw(ctx, width, height);
+starTiling = new Tiling(littleBirdStar, transformation, [0, 6], [Math.sqrt(3), 3], width, height);
+starTiling.draw(ctx);
+
+wingTiling = new Tiling(littleBirdWing, transformation, [0, 6], [Math.sqrt(3), 3], width, height);
+wingTiling.draw(ctx);
 
 ctx.stroke();
 
 let colour_order = ["black", "orange", "green", "blue"];
 for (let i = 0; i < 4; i++) {
     ctx.beginPath();
-    let littleBirdStar = new LittleBirdStar(x + i * Math.sqrt(3) * radius, y + 3 * i * radius, radius);
-    starTiling = new Tiling(littleBirdStar, [0, 12 * radius], [2 * Math.sqrt(3) * radius, 0]);
-    starTiling.draw(ctx, width, height);
+    t = {
+        shiftX: transformation.shiftX + i * Math.sqrt(3) * transformation.scale,
+        shiftY: transformation.shiftY + 3 * i * transformation.scale,
+        scale: transformation.scale,
+    }
+    starTiling = new Tiling(littleBirdStar, t, [0, 12], [2 * Math.sqrt(3), 0], width, height);
+    starTiling.draw(ctx);
     ctx.fillStyle = colours[colour_order[i]];
     ctx.fill();
 }
 
 for (let i = 0; i < 4; i++) {
     ctx.beginPath();
-    let littleBirdWing = new LittleBirdWing(x + i * 2 * Math.sqrt(3) * radius, y, radius);
-    wingTiling = new Tiling(littleBirdWing, [- Math.sqrt(3) * radius, 3 * radius], [8 * Math.sqrt(3) * radius, 0]);
-    wingTiling.draw(ctx, width, height);
+    t = Object.assign({}, transformation, {shiftX: transformation.shiftX + i * 2 * Math.sqrt(3) * transformation.scale});
+    wingTiling = new Tiling(littleBirdWing, t, [-Math.sqrt(3), 3], [8 * Math.sqrt(3), 0], width, height);
+    wingTiling.draw(ctx);
     ctx.fillStyle = colours[colour_order[i]];
     ctx.fill();
 }
-
 
