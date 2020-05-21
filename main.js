@@ -21,24 +21,24 @@ function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
         return false;
     }
 
-    function search(current, left=true) {
+    function search(current, left = true) {
         let cx = current[0];
         while (overlaps([cx, current[1]])) {
             cx += left ? -1 : 1;
         }
         return cx + (left ? 1 : -1);
     }
-    
+
     let leftMostX = search([0, 0], true);
     let rightMostX = search([0, 0], false);
-    
+
     let shifts = [];
     for (let x = leftMostX; x <= rightMostX; x++) {
         shifts.push([x, 0]);
     }
     let originalBounds = [leftMostX, rightMostX];
-    
-    function fillVertical(shifts, originalBounds, up=true) {
+
+    function fillVertical(shifts, originalBounds, up = true) {
         let valid = true;
         let currentY = 0;
         leftMostX = originalBounds[0];
@@ -73,7 +73,7 @@ function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
 
 
 function transformDraw(draw, transformation) {
-    return function(ctx) {
+    return function (ctx) {
         ctx.save();
         ctx.translate(transformation.shiftX, transformation.shiftY);
         ctx.scale(transformation.scale, transformation.scale);
@@ -142,7 +142,7 @@ function toCorners(topLeft, bottomRight) {
 
 
 const littleBirdStar = {
-    draw: function(ctx) {
+    draw: function (ctx) {
         let r = Math.sqrt(3) - 1;
 
         ctx.moveTo(r, 0);
@@ -160,7 +160,7 @@ const littleBirdStar = {
 
 
 const littleBirdWing = {
-    draw: function(ctx) {
+    draw: function (ctx) {
         let sqrt3 = Math.sqrt(3);
         let r = sqrt3 - 1;
 
@@ -178,69 +178,77 @@ const littleBirdWing = {
 
         ctx.restore();
     },
-    boundingBox: (function() {
+    boundingBox: (function () {
         let r = 3 * Math.sqrt(3) / 2;
         return toCorners([-r, -r], [r, r]);
     })()
 }
 
 
-// setup canvas
+class Pattern {
+
+    constructor(canvasWidth, canvasHeight) {
+        this.canvasWidth = canvasWidth;
+        this.canvasHeight = canvasHeight;
+
+        this.transformation = {
+            shiftX: 400,
+            shiftY: 400,
+            scale: 40,
+        }
+
+    }
+
+    colours = {
+        "black": "black",
+        "orange": "rgb(176, 93, 37)",
+        "green": "rgb(35, 98, 45)",
+        "blue": "rgb(81, 122, 184)",
+    }
+
+    draw(ctx) {
+
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+        let colour_order = ["black", "orange", "green", "blue"];
+
+        for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            let t = {
+                shiftX: this.transformation.shiftX + i * Math.sqrt(3) * this.transformation.scale,
+                shiftY: this.transformation.shiftY + 3 * i * this.transformation.scale,
+                scale: this.transformation.scale,
+            }
+            let starTiling = new Tiling(littleBirdStar, t, [0, 12], [2 * Math.sqrt(3), 0], this.canvasWidth, this.canvasHeight);
+            starTiling.draw(ctx);
+            ctx.fillStyle = this.colours[colour_order[i]];
+            ctx.fill();
+        }
+
+        for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            let t = Object.assign(
+                {},
+                this.transformation,
+                { shiftX: this.transformation.shiftX + i * 2 * Math.sqrt(3) * this.transformation.scale }
+            );
+            let wingTiling = new Tiling(littleBirdWing, t, [-Math.sqrt(3), 3], [8 * Math.sqrt(3), 0], this.canvasWidth, this.canvasHeight);
+            wingTiling.draw(ctx);
+            ctx.fillStyle = this.colours[colour_order[i]];
+            ctx.fill();
+        }
+
+    }
+
+}
+
 
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-const width = canvas.width = window.innerWidth;
-const height = canvas.height = window.innerHeight;
+pattern = new Pattern(canvas.width, canvas.height);
 
-
-ctx.fillStyle = "white";
-ctx.fillRect(0, 0, width, height);
-
-colours = {
-    "black": "black",
-    "orange": "rgb(176, 93, 37)",
-    "green": "rgb(35, 98, 45)",
-    "blue": "rgb(81, 122, 184)",
-}
-
-x = 400;
-y = 400;
-radius = 40;
-
-ctx.strokeStyle = "black";
-ctx.lineWidth = 2;
-
-transformation = {shiftX: x, shiftY: y, scale: radius};
-
-starTiling = new Tiling(littleBirdStar, transformation, [0, 6], [Math.sqrt(3), 3], width, height);
-starTiling.draw(ctx);
-
-wingTiling = new Tiling(littleBirdWing, transformation, [0, 6], [Math.sqrt(3), 3], width, height);
-wingTiling.draw(ctx);
-
-ctx.stroke();
-
-let colour_order = ["black", "orange", "green", "blue"];
-for (let i = 0; i < 4; i++) {
-    ctx.beginPath();
-    t = {
-        shiftX: transformation.shiftX + i * Math.sqrt(3) * transformation.scale,
-        shiftY: transformation.shiftY + 3 * i * transformation.scale,
-        scale: transformation.scale,
-    }
-    starTiling = new Tiling(littleBirdStar, t, [0, 12], [2 * Math.sqrt(3), 0], width, height);
-    starTiling.draw(ctx);
-    ctx.fillStyle = colours[colour_order[i]];
-    ctx.fill();
-}
-
-for (let i = 0; i < 4; i++) {
-    ctx.beginPath();
-    t = Object.assign({}, transformation, {shiftX: transformation.shiftX + i * 2 * Math.sqrt(3) * transformation.scale});
-    wingTiling = new Tiling(littleBirdWing, t, [-Math.sqrt(3), 3], [8 * Math.sqrt(3), 0], width, height);
-    wingTiling.draw(ctx);
-    ctx.fillStyle = colours[colour_order[i]];
-    ctx.fill();
-}
-
+pattern.draw(ctx);
