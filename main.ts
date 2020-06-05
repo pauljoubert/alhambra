@@ -1,6 +1,28 @@
 
 
-function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
+class Vector {
+
+    x: number;
+    y: number;
+
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+
+    scale(alpha: number): Vector {
+        return new Vector(this.x * alpha, this.y * alpha);
+    }
+
+    copy(): Vector {
+        return new Vector(this.x, this.y);
+    }
+}
+
+type BoundingBox = Array<Vector>;
+
+
+function calculateShifts(boundingBox: BoundingBox, vectorA, vectorB, width, height) {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
     // (corners at (0, 0) and (width, height)).
@@ -11,8 +33,8 @@ function calculateShifts(boundingBox, vectorA, vectorB, width, height) {
         // console.log(boundingBox);
         for (const point of boundingBox) {
             let q = [
-                point[0] + shift[0] * vectorA[0] + shift[1] * vectorB[0],
-                point[1] + shift[0] * vectorA[1] + shift[1] * vectorB[1],
+                point.x + shift[0] * vectorA[0] + shift[1] * vectorB[0],
+                point.y + shift[0] * vectorA[1] + shift[1] * vectorB[1],
             ];
             if ((q[0] >= 0) && (q[0] <= width) && (q[1] >= 0) && (q[1] <= height)) {
                 return true;
@@ -83,16 +105,18 @@ function transformDraw(draw, transformation) {
 }
 
 
-function transformBoundingBox(boundingBox, transformation) {
-    let newBoundingBox = [];
-    for (const point of boundingBox) {
-        // let p = Array.from(point);
-        let p = [point[0], point[1]];
-        p[0] *= transformation.scale;
-        p[1] *= transformation.scale;
-        p[0] += transformation.shiftX;
-        p[1] += transformation.shiftY;
-        newBoundingBox.push(p);
+
+function transformBoundingBox(boundingBox: BoundingBox, transformation): BoundingBox {
+    let newBoundingBox: BoundingBox = [];
+    for (const vector of boundingBox) {
+        let v: Vector = vector.copy();
+        // let v: Vector = { x: vector[0], y: vector[1] }
+        // let v2 = v.scale(transformation.scale)
+        v.x *= transformation.scale;
+        v.y *= transformation.scale;
+        v.x += transformation.shiftX;
+        v.y += transformation.shiftY;
+        newBoundingBox.push(v);
     }
     return newBoundingBox;
 }
@@ -143,13 +167,13 @@ class Tiling {
 }
 
 
-function toCorners(topLeft, bottomRight) {
-    return [topLeft, [topLeft[0], bottomRight[1]], bottomRight, [bottomRight[0], topLeft[1]]];
+function toCorners(topLeft: Vector, bottomRight: Vector): BoundingBox {
+    return [topLeft, new Vector(topLeft.x, bottomRight.y), bottomRight, new Vector(bottomRight.x, topLeft.y)];
 }
 
 
 const littleBirdStar = {
-    draw: function (ctx) {
+    draw: function (ctx: CanvasRenderingContext2D) {
         let r = Math.sqrt(3) - 1;
 
         ctx.moveTo(r, 0);
@@ -162,12 +186,12 @@ const littleBirdStar = {
         ctx.lineTo(r, 0);
         ctx.restore();
     },
-    boundingBox: toCorners([-1, -1], [1, 1]),
+    boundingBox: toCorners(new Vector(-1, -1), new Vector(1, 1))
 }
 
 
 const littleBirdWing = {
-    draw: function (ctx) {
+    draw: function (ctx: CanvasRenderingContext2D) {
         let sqrt3 = Math.sqrt(3);
         let r = sqrt3 - 1;
 
@@ -187,17 +211,17 @@ const littleBirdWing = {
     },
     boundingBox: (function () {
         let r = 3 * Math.sqrt(3) / 2;
-        return toCorners([-r, -r], [r, r]);
+        return toCorners(new Vector(-r, -r), new Vector(r, r));
     })()
 }
 
 
 class Pattern {
-    canvasWidth: any;
-    canvasHeight: any;
+    canvasWidth: number;
+    canvasHeight: number;
     transformation: { shiftX: number; shiftY: number; scale: number; };
 
-    constructor(canvasWidth, canvasHeight) {
+    constructor(canvasWidth: number, canvasHeight: number) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
 
