@@ -14,6 +14,10 @@ class Vector {
         return new Vector(this.x * alpha, this.y * alpha);
     }
 
+    shift(vector: Vector): Vector {
+        return new Vector(this.x + vector.x, this.y + vector.y);
+    }
+
     copy(): Vector {
         return new Vector(this.x, this.y);
     }
@@ -21,8 +25,15 @@ class Vector {
 
 type BoundingBox = Array<Vector>;
 
+interface Transformation { shift: Vector; scale: number; };
 
-function calculateShifts(boundingBox: BoundingBox, vectorA, vectorB, width, height) {
+interface Unit {
+    draw: (ctx: CanvasRenderingContext2D) => void;
+    boundingBox: BoundingBox;
+}
+
+
+function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vector, width: number, height: number) {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
     // (corners at (0, 0) and (width, height)).
@@ -33,8 +44,8 @@ function calculateShifts(boundingBox: BoundingBox, vectorA, vectorB, width, heig
         // console.log(boundingBox);
         for (const point of boundingBox) {
             let q = [
-                point.x + shift[0] * vectorA[0] + shift[1] * vectorB[0],
-                point.y + shift[0] * vectorA[1] + shift[1] * vectorB[1],
+                point.x + shift[0] * vectorA.x + shift[1] * vectorB.x,
+                point.y + shift[0] * vectorA.y + shift[1] * vectorB.y,
             ];
             if ((q[0] >= 0) && (q[0] <= width) && (q[1] >= 0) && (q[1] <= height)) {
                 return true;
@@ -94,10 +105,10 @@ function calculateShifts(boundingBox: BoundingBox, vectorA, vectorB, width, heig
 }
 
 
-function transformDraw(draw, transformation) {
-    return function (ctx) {
+function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transformation: Transformation) {
+    return function (ctx: CanvasRenderingContext2D) {
         ctx.save();
-        ctx.translate(transformation.shiftX, transformation.shiftY);
+        ctx.translate(transformation.shift.x, transformation.shift.y);
         ctx.scale(transformation.scale, transformation.scale);
         draw(ctx);
         ctx.restore();
@@ -105,38 +116,21 @@ function transformDraw(draw, transformation) {
 }
 
 
-
-function transformBoundingBox(boundingBox: BoundingBox, transformation): BoundingBox {
-    let newBoundingBox: BoundingBox = [];
-    for (const vector of boundingBox) {
-        let v: Vector = vector.copy();
-        // let v: Vector = { x: vector[0], y: vector[1] }
-        // let v2 = v.scale(transformation.scale)
-        v.x *= transformation.scale;
-        v.y *= transformation.scale;
-        v.x += transformation.shiftX;
-        v.y += transformation.shiftY;
-        newBoundingBox.push(v);
-    }
-    return newBoundingBox;
-}
-
-
-function scaleVector(vector, scale) {
-    return [vector[0] * scale, vector[1] * scale];
+function transformBoundingBox(boundingBox: BoundingBox, transformation: Transformation): BoundingBox {
+    return boundingBox.map((vector: Vector) => vector.scale(transformation.scale).shift(transformation.shift));
 }
 
 
 class Tiling {
     // Unit repeated across a 2D grid.
-    unit: any;
-    transformation: any;
-    vectorA: any;
-    vectorB: any;
-    canvasWidth: any;
-    canvasHeight: any;
+    unit: Unit;
+    transformation: Transformation;
+    vectorA: Vector;
+    vectorB: Vector;
+    canvasWidth: number;
+    canvasHeight: number;
 
-    constructor(unit, transformation, vectorA, vectorB, canvasWidth, canvasHeight) {
+    constructor(unit: Unit, transformation: Transformation, vectorA: Vector, vectorB: Vector, canvasWidth: number, canvasHeight: number) {
         this.unit = unit;
         this.transformation = transformation;
         this.vectorA = vectorA;
@@ -145,19 +139,19 @@ class Tiling {
         this.canvasHeight = canvasHeight;
     }
 
-    draw(ctx) {
+    draw(ctx: CanvasRenderingContext2D) {
         const boundingBox = transformBoundingBox(this.unit.boundingBox, this.transformation);
         let transformedDraw = transformDraw(this.unit.draw, this.transformation);
-        let vectorA = scaleVector(this.vectorA, this.transformation.scale);
-        let vectorB = scaleVector(this.vectorB, this.transformation.scale);
+        let vectorA = this.vectorA.scale(this.transformation.scale);
+        let vectorB = this.vectorB.scale(this.transformation.scale);
         const shifts = calculateShifts(
             boundingBox, vectorA, vectorB, this.canvasWidth, this.canvasHeight
         );
         for (const shift of shifts) {
             ctx.save();
             ctx.translate(
-                vectorA[0] * shift[0] + vectorB[0] * shift[1],
-                vectorA[1] * shift[0] + vectorB[1] * shift[1],
+                vectorA.x * shift[0] + vectorB.x * shift[1],
+                vectorA.y * shift[0] + vectorB.y * shift[1],
             );
             transformedDraw(ctx);
             ctx.restore();
@@ -172,7 +166,7 @@ function toCorners(topLeft: Vector, bottomRight: Vector): BoundingBox {
 }
 
 
-const littleBirdStar = {
+const littleBirdStar: Unit = {
     draw: function (ctx: CanvasRenderingContext2D) {
         let r = Math.sqrt(3) - 1;
 
@@ -190,7 +184,7 @@ const littleBirdStar = {
 }
 
 
-const littleBirdWing = {
+const littleBirdWing: Unit = {
     draw: function (ctx: CanvasRenderingContext2D) {
         let sqrt3 = Math.sqrt(3);
         let r = sqrt3 - 1;
@@ -219,15 +213,13 @@ const littleBirdWing = {
 class Pattern {
     canvasWidth: number;
     canvasHeight: number;
-    transformation: { shiftX: number; shiftY: number; scale: number; };
+    transformation: Transformation;
 
     constructor(canvasWidth: number, canvasHeight: number) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
-
         this.transformation = {
-            shiftX: 400,
-            shiftY: 400,
+            shift: new Vector(400, 400),
             scale: 40,
         }
 
@@ -240,7 +232,7 @@ class Pattern {
         "blue": "rgb(81, 122, 184)",
     }
 
-    draw(ctx) {
+    draw(ctx: CanvasRenderingContext2D) {
 
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
@@ -249,12 +241,12 @@ class Pattern {
 
         for (let i = 0; i < 4; i++) {
             ctx.beginPath();
-            let t = {
-                shiftX: this.transformation.shiftX + i * Math.sqrt(3) * this.transformation.scale,
-                shiftY: this.transformation.shiftY + 3 * i * this.transformation.scale,
+            let t: Transformation = {
+                shift: new Vector(this.transformation.shift.x + i * Math.sqrt(3) * this.transformation.scale,
+                    this.transformation.shift.y + 3 * i * this.transformation.scale),
                 scale: this.transformation.scale,
             }
-            let starTiling = new Tiling(littleBirdStar, t, [0, 12], [2 * Math.sqrt(3), 0], this.canvasWidth, this.canvasHeight);
+            let starTiling = new Tiling(littleBirdStar, t, new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0), this.canvasWidth, this.canvasHeight);
             starTiling.draw(ctx);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
@@ -262,12 +254,12 @@ class Pattern {
 
         for (let i = 0; i < 4; i++) {
             ctx.beginPath();
-            let t = Object.assign(
-                {},
-                this.transformation,
-                { shiftX: this.transformation.shiftX + i * 2 * Math.sqrt(3) * this.transformation.scale }
-            );
-            let wingTiling = new Tiling(littleBirdWing, t, [-Math.sqrt(3), 3], [8 * Math.sqrt(3), 0], this.canvasWidth, this.canvasHeight);
+            let t: Transformation = {
+                shift: new Vector(this.transformation.shift.x + i * 2 * Math.sqrt(3) * this.transformation.scale,
+                    this.transformation.shift.y),
+                scale: this.transformation.scale,
+            };
+            let wingTiling = new Tiling(littleBirdWing, t, new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0), this.canvasWidth, this.canvasHeight);
             wingTiling.draw(ctx);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
@@ -301,16 +293,16 @@ document.addEventListener('keydown', (event) => {
             pattern.transformation.scale *= 1.01;
             break;
         case 'ArrowRight':
-            pattern.transformation.shiftX += shiftSpeed;
+            pattern.transformation.shift.x += shiftSpeed;
             break;
         case 'ArrowLeft':
-            pattern.transformation.shiftX -= shiftSpeed;
+            pattern.transformation.shift.x -= shiftSpeed;
             break;
         case 'ArrowUp':
-            pattern.transformation.shiftY -= shiftSpeed;
+            pattern.transformation.shift.y -= shiftSpeed;
             break;
         case 'ArrowDown':
-            pattern.transformation.shiftY += shiftSpeed;
+            pattern.transformation.shift.y += shiftSpeed;
             break;
     }
 
@@ -332,8 +324,8 @@ document.addEventListener('mousedown', e => {
 
 document.addEventListener('mousemove', e => {
     if (mouseDown === true) {
-        pattern.transformation.shiftX += e.offsetX - mouseX;
-        pattern.transformation.shiftY += e.offsetY - mouseY;
+        pattern.transformation.shift.x += e.offsetX - mouseX;
+        pattern.transformation.shift.y += e.offsetY - mouseY;
         pattern.draw(ctx);
         mouseX = e.offsetX;
         mouseY = e.offsetY;
@@ -342,8 +334,8 @@ document.addEventListener('mousemove', e => {
 
 document.addEventListener('mouseup', e => {
     if (mouseDown === true) {
-        pattern.transformation.shiftX += e.offsetX - mouseX;
-        pattern.transformation.shiftY += e.offsetY - mouseY;
+        pattern.transformation.shift.x += e.offsetX - mouseX;
+        pattern.transformation.shift.y += e.offsetY - mouseY;
         pattern.draw(ctx);
         mouseDown = false;
     }
