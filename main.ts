@@ -1,36 +1,4 @@
-
-
-class Vector {
-
-    x: number;
-    y: number;
-
-    constructor(x: number, y: number) {
-        this.x = x;
-        this.y = y;
-    }
-
-    scale(alpha: number): Vector {
-        return new Vector(this.x * alpha, this.y * alpha);
-    }
-
-    shift(vector: Vector): Vector {
-        return new Vector(this.x + vector.x, this.y + vector.y);
-    }
-
-    copy(): Vector {
-        return new Vector(this.x, this.y);
-    }
-}
-
-type BoundingBox = Array<Vector>;
-
-interface Transformation { shift: Vector; scale: number; };
-
-interface Unit {
-    draw: (ctx: CanvasRenderingContext2D) => void;
-    boundingBox: BoundingBox;
-}
+import { Vector, BoundingBox, Transformation, Unit } from "./typing";
 
 
 function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vector, width: number, height: number): Array<Vector> {
