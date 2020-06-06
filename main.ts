@@ -33,45 +33,52 @@ interface Unit {
 }
 
 
-function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vector, width: number, height: number) {
+function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vector, width: number, height: number): Array<Vector> {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
     // (corners at (0, 0) and (width, height)).
     // Assume initial boundingBox overlaps canvas.
     // Also assume that overlaps => at least one corner of boundingBox is inside the canvas.
 
-    function overlaps(shift) {
-        // console.log(boundingBox);
+    /**
+     * Check if the shifted bounding box still overlaps the canvas.
+     * @param shift Integer coordinates in basis defined by vectorA, vectorB.
+     */
+    function overlaps(shift: Vector) {
         for (const point of boundingBox) {
-            let q = [
-                point.x + shift[0] * vectorA.x + shift[1] * vectorB.x,
-                point.y + shift[0] * vectorA.y + shift[1] * vectorB.y,
-            ];
-            if ((q[0] >= 0) && (q[0] <= width) && (q[1] >= 0) && (q[1] <= height)) {
+            const t = vectorA.scale(shift.x).shift(vectorB.scale(shift.y));
+            const q = point.shift(t);
+            if ((q.x >= 0) && (q.x <= width) && (q.y >= 0) && (q.y <= height)) {
                 return true;
             }
         }
         return false;
     }
 
-    function search(current, left = true) {
-        let cx = current[0];
-        while (overlaps([cx, current[1]])) {
-            cx += left ? -1 : 1;
+    /**
+     * See how far we can move the bounding box left or right within the canvas.
+     * @param current 
+     * @param left 
+     */
+    function search(current: Vector, left = true): number {
+        let v = current.copy();
+        // let cx = current[0];
+        while (overlaps(v)) {
+            v.x += left ? -1 : 1;
         }
-        return cx + (left ? 1 : -1);
+        return v.x + (left ? 1 : -1);
     }
 
-    let leftMostX = search([0, 0], true);
-    let rightMostX = search([0, 0], false);
+    let leftMostX = search(new Vector(0, 0), true);
+    let rightMostX = search(new Vector(0, 0), false);
 
-    let shifts = [];
+    let shifts: Array<Vector> = [];
     for (let x = leftMostX; x <= rightMostX; x++) {
-        shifts.push([x, 0]);
+        shifts.push(new Vector(x, 0));
     }
-    let originalBounds = [leftMostX, rightMostX];
+    let originalBounds: Array<number> = [leftMostX, rightMostX];
 
-    function fillVertical(shifts, originalBounds, up = true) {
+    function fillVertical(shifts: Array<Vector>, originalBounds: Array<number>, up = true) {
         let valid = true;
         let currentY = 0;
         leftMostX = originalBounds[0];
@@ -79,11 +86,11 @@ function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vec
         while (valid) {
             currentY += (up ? 1 : -1);
             valid = false;
-            leftMostX = search([leftMostX, currentY], true);
-            rightMostX = search([rightMostX, currentY], false);
+            leftMostX = search(new Vector(leftMostX, currentY), true);
+            rightMostX = search(new Vector(rightMostX, currentY), false);
             let newRightMostX;
             for (let x = leftMostX; x <= rightMostX; x++) {
-                let point = [x, currentY];
+                let point = new Vector(x, currentY);
                 if (overlaps(point)) {
                     shifts.push(point);
                     if (!valid) {
@@ -121,8 +128,10 @@ function transformBoundingBox(boundingBox: BoundingBox, transformation: Transfor
 }
 
 
+/**
+ * Unit repeated across a 2D grid.
+ */
 class Tiling {
-    // Unit repeated across a 2D grid.
     unit: Unit;
     transformation: Transformation;
     vectorA: Vector;
@@ -148,11 +157,9 @@ class Tiling {
             boundingBox, vectorA, vectorB, this.canvasWidth, this.canvasHeight
         );
         for (const shift of shifts) {
+            const t = vectorA.scale(shift.x).shift(vectorB.scale(shift.y))
             ctx.save();
-            ctx.translate(
-                vectorA.x * shift[0] + vectorB.x * shift[1],
-                vectorA.y * shift[0] + vectorB.y * shift[1],
-            );
+            ctx.translate(t.x, t.y);
             transformedDraw(ctx);
             ctx.restore();
         }
