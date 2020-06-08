@@ -19,6 +19,15 @@ export class Vector {
     copy(): Vector {
         return new Vector(this.x, this.y);
     }
+
+    dot(v: Vector) {
+        return this.x * v.x + this.y * v.y;
+    }
+
+    norm() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
 }
 
 export type BoundingBox = Array<Vector>;

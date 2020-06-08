@@ -1,7 +1,41 @@
 import { Vector, BoundingBox, Transformation, Unit } from "./typing";
 
+class Basis {
+    v: Vector;
+    w: Vector;
 
-function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vector, width: number, height: number): Array<Vector> {
+    constructor(v: Vector, w: Vector) {
+        this.v = v;
+        this.w = w;
+    }
+
+    toCoefficients(z: Vector): Vector {
+        return new Vector(z.dot(this.v) / this.v.norm(), z.dot(this.w) / this.w.norm());
+    }
+
+    fromCoefficients(z: Vector): Vector {
+        return this.v.scale(z.x).shift(this.w.scale(z.y));
+    }
+
+    scale(t: number): Basis {
+        return new Basis(this.v.scale(t), this.w.scale(t));
+    }
+
+}
+
+// /**
+//  * Return grid point nearest to given point.
+//  * @param basis Basis of 2D grid.
+//  * @param point Arbitrary 2D point.
+//  */
+// function nearestGridPoint(basis: Basis, point: Vector): Vector {
+
+
+
+// }
+
+
+function calculateShifts(boundingBox: BoundingBox, basis: Basis, width: number, height: number): Array<Vector> {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
     // (corners at (0, 0) and (width, height)).
@@ -14,7 +48,7 @@ function calculateShifts(boundingBox: BoundingBox, vectorA: Vector, vectorB: Vec
      */
     function overlaps(shift: Vector) {
         for (const point of boundingBox) {
-            const t = vectorA.scale(shift.x).shift(vectorB.scale(shift.y));
+            const t = basis.fromCoefficients(shift);
             const q = point.shift(t);
             if ((q.x >= 0) && (q.x <= width) && (q.y >= 0) && (q.y <= height)) {
                 return true;
@@ -102,16 +136,14 @@ function transformBoundingBox(boundingBox: BoundingBox, transformation: Transfor
 class Tiling {
     unit: Unit;
     transformation: Transformation;
-    vectorA: Vector;
-    vectorB: Vector;
+    basis: Basis;
     canvasWidth: number;
     canvasHeight: number;
 
-    constructor(unit: Unit, transformation: Transformation, vectorA: Vector, vectorB: Vector, canvasWidth: number, canvasHeight: number) {
+    constructor(unit: Unit, transformation: Transformation, basis: Basis, canvasWidth: number, canvasHeight: number) {
         this.unit = unit;
         this.transformation = transformation;
-        this.vectorA = vectorA;
-        this.vectorB = vectorB;
+        this.basis = basis;
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
     }
@@ -119,13 +151,12 @@ class Tiling {
     draw(ctx: CanvasRenderingContext2D) {
         const boundingBox = transformBoundingBox(this.unit.boundingBox, this.transformation);
         let transformedDraw = transformDraw(this.unit.draw, this.transformation);
-        let vectorA = this.vectorA.scale(this.transformation.scale);
-        let vectorB = this.vectorB.scale(this.transformation.scale);
+        let basis = this.basis.scale(this.transformation.scale);
         const shifts = calculateShifts(
-            boundingBox, vectorA, vectorB, this.canvasWidth, this.canvasHeight
+            boundingBox, basis, this.canvasWidth, this.canvasHeight
         );
         for (const shift of shifts) {
-            const t = vectorA.scale(shift.x).shift(vectorB.scale(shift.y))
+            const t = basis.fromCoefficients(shift);
             ctx.save();
             ctx.translate(t.x, t.y);
             transformedDraw(ctx);
@@ -197,7 +228,6 @@ class Pattern {
             shift: new Vector(400, 400),
             scale: 40,
         }
-
     }
 
     colours = {
@@ -221,7 +251,7 @@ class Pattern {
                     this.transformation.shift.y + 3 * i * this.transformation.scale),
                 scale: this.transformation.scale,
             }
-            let starTiling = new Tiling(littleBirdStar, t, new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0), this.canvasWidth, this.canvasHeight);
+            let starTiling = new Tiling(littleBirdStar, t, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvasWidth, this.canvasHeight);
             starTiling.draw(ctx);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
@@ -234,7 +264,7 @@ class Pattern {
                     this.transformation.shift.y),
                 scale: this.transformation.scale,
             };
-            let wingTiling = new Tiling(littleBirdWing, t, new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0), this.canvasWidth, this.canvasHeight);
+            let wingTiling = new Tiling(littleBirdWing, t, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvasWidth, this.canvasHeight);
             wingTiling.draw(ctx);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
