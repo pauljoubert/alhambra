@@ -30,6 +30,29 @@ export class Vector {
 
 }
 
+export class Basis {
+    v: Vector;
+    w: Vector;
+
+    constructor(v: Vector, w: Vector) {
+        this.v = v;
+        this.w = w;
+    }
+
+    toCoefficients(z: Vector): Vector {
+        return new Vector(z.dot(this.v) / this.v.norm(), z.dot(this.w) / this.w.norm());
+    }
+
+    fromCoefficients(z: Vector): Vector {
+        return this.v.scale(z.x).shift(this.w.scale(z.y));
+    }
+
+    scale(t: number): Basis {
+        return new Basis(this.v.scale(t), this.w.scale(t));
+    }
+
+}
+
 export type BoundingBox = Array<Vector>;
 
 
