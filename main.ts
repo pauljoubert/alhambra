@@ -221,7 +221,7 @@ class Pattern {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
         this.transformation = {
-            shift: new Vector(400, 400),
+            shift: new Vector(600, 400),
             scale: 40,
         }
     }
@@ -346,8 +346,13 @@ document.addEventListener('wheel', e => {
     if (e.deltaY === 0) {
         return;
     }
-    let r = e.deltaY > 0 ? 0.99 : 1.01;
-    pattern.transformation.scale *= r;
+    let r = e.deltaY > 0 ? 0.98 : 1.02;
+    let t = pattern.transformation;
+    let correctionX = (e.offsetX - t.shift.x) * (r - 1);
+    let correctionY = (e.offsetY - t.shift.y) * (r - 1);
+    t.scale *= r;
+    t.shift.x -= correctionX;
+    t.shift.y -= correctionY;
     pattern.draw(ctx);
 });
 
