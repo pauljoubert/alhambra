@@ -107,6 +107,14 @@ export class Rectangle {
         return overlapsX && overlapsY;
     }
 
+    width(): number {
+        return this.bottomRight.x - this.topLeft.x;
+    }
+
+    height(): number {
+        return this.bottomRight.y - this.topLeft.y;
+    }
+
 }
 
 
