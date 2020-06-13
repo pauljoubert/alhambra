@@ -75,7 +75,7 @@ export class Basis {
 
 }
 
-export class BoundingBox {
+export class Rectangle {
 
     topLeft: Vector;
     bottomRight: Vector;
@@ -93,6 +93,20 @@ export class BoundingBox {
         return new Vector((this.topLeft.x + this.bottomRight.x) / 2, (this.topLeft.y + this.bottomRight.y) / 2);
     }
 
+    shift(v: Vector): Rectangle {
+        return new Rectangle(this.topLeft.shift(v), this.bottomRight.shift(v));
+    }
+
+    /**
+     * Return true if another rectangle overlaps with this one.
+     * @param r Another rectangle
+     */
+    overlaps(r: Rectangle): boolean {
+        let overlapsX = (this.topLeft.x <= r.bottomRight.x) && (r.topLeft.x <= this.bottomRight.x);
+        let overlapsY = (this.topLeft.y <= r.bottomRight.y) && (r.topLeft.y <= this.bottomRight.y);
+        return overlapsX && overlapsY;
+    }
+
 }
 
 
@@ -100,5 +114,5 @@ export interface Transformation { shift: Vector; scale: number; };
 
 export interface Unit {
     draw: (ctx: CanvasRenderingContext2D) => void;
-    boundingBox: BoundingBox;
+    boundingBox: Rectangle;
 }

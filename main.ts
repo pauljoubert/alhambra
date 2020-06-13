@@ -1,4 +1,4 @@
-import { Vector, Basis, BoundingBox, Transformation, Unit } from "./typing";
+import { Vector, Basis, Rectangle, Transformation, Unit } from "./typing";
 
 
 /**
@@ -15,26 +15,20 @@ function getEquivalentShift(shift: Vector, basis: Basis, source: Vector, target:
 }
 
 
-function calculateShifts(boundingBox: BoundingBox, basis: Basis, width: number, height: number): Array<Vector> {
+function calculateShifts(boundingBox: Rectangle, basis: Basis, width: number, height: number): Array<Vector> {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
     // (corners at (0, 0) and (width, height)).
-    // Assume initial boundingBox overlaps canvas.
-    // Also assume that overlaps => at least one corner of boundingBox is inside the canvas.
+
+    let canvas = new Rectangle(new Vector(0, 0), new Vector(width, height));
 
     /**
      * Check if the shifted bounding box still overlaps the canvas.
-     * @param shift Integer coordinates in basis defined by vectorA, vectorB.
+     * @param shift Integer coordinates in basis.
      */
     function overlaps(shift: Vector) {
-        for (const point of boundingBox.corners()) {
-            const t = basis.fromCoefficients(shift);
-            const q = point.shift(t);
-            if ((q.x >= 0) && (q.x <= width) && (q.y >= 0) && (q.y <= height)) {
-                return true;
-            }
-        }
-        return false;
+        let shiftedBoundingBox = boundingBox.shift(basis.fromCoefficients(shift));
+        return shiftedBoundingBox.overlaps(canvas);
     }
 
     /**
@@ -44,7 +38,6 @@ function calculateShifts(boundingBox: BoundingBox, basis: Basis, width: number, 
      */
     function search(current: Vector, left = true): number {
         let v = current.copy();
-        // let cx = current[0];
         while (overlaps(v)) {
             v.x += left ? -1 : 1;
         }
@@ -105,8 +98,8 @@ function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transforma
 }
 
 
-function transformBoundingBox(boundingBox: BoundingBox, transformation: Transformation): BoundingBox {
-    return new BoundingBox(
+function transformBoundingBox(boundingBox: Rectangle, transformation: Transformation): Rectangle {
+    return new Rectangle(
         boundingBox.topLeft.scale(transformation.scale).shift(transformation.shift),
         boundingBox.bottomRight.scale(transformation.scale).shift(transformation.shift),
     );
@@ -152,7 +145,7 @@ class Tiling {
             ctx.rect(boundingBox.topLeft.x, boundingBox.topLeft.y, (boundingBox.bottomRight.x - boundingBox.topLeft.x), (boundingBox.bottomRight.y - boundingBox.topLeft.y));
             ctx.stroke();
         }
-            
+
         const shifts = calculateShifts(
             boundingBox, basis, this.canvasWidth, this.canvasHeight
         );
@@ -182,7 +175,7 @@ const littleBirdStar: Unit = {
         ctx.lineTo(r, 0);
         ctx.restore();
     },
-    boundingBox: new BoundingBox(new Vector(-1, -1), new Vector(1, 1))
+    boundingBox: new Rectangle(new Vector(-1, -1), new Vector(1, 1))
 }
 
 
@@ -207,7 +200,7 @@ const littleBirdWing: Unit = {
     },
     boundingBox: (function () {
         let r = 3 * Math.sqrt(3) / 2;
-        return new BoundingBox(new Vector(-r, -r + 2), new Vector(r, r + 2));
+        return new Rectangle(new Vector(-r, -r + 2), new Vector(r, r + 2));
     })()
 }
 
