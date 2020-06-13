@@ -38,6 +38,7 @@ function calculateShifts(boundingBox: Rectangle, basis: Basis, width: number, he
      */
     function search(current: Vector, left = true): number {
         let v = current.copy();
+        v.x += left ? -1 : 1;
         while (overlaps(v)) {
             v.x += left ? -1 : 1;
         }
@@ -138,7 +139,7 @@ class Tiling {
         let basis = this.basis.scale(this.transformation.scale);
 
         // Draw bounding box. Very useful for debugging.
-        let debug = false;
+        let debug = false;   
         if (debug) {
             ctx.lineWidth = 5;
             ctx.strokeStyle = "blue";
