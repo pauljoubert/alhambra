@@ -16,6 +16,10 @@ export class Vector {
         return new Vector(this.x + vector.x, this.y + vector.y);
     }
 
+    negate(): Vector {
+        return new Vector(-this.x, -this.y);
+    }
+
     copy(): Vector {
         return new Vector(this.x, this.y);
     }
@@ -26,6 +30,10 @@ export class Vector {
 
     norm() {
         return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    round() {
+        return new Vector(Math.round(this.x), Math.round(this.y));
     }
 
 }
@@ -39,10 +47,24 @@ export class Basis {
         this.w = w;
     }
 
+    /**
+     * Return coefficients when expressing 2D vector as weighted sum of basis vectors.
+     * From:
+     * https://math.stackexchange.com/questions/148199/equation-for-non-orthogonal-projection-of-a-point-onto-two-vectors-representing
+     * alpha = (z-component of w cross z) / (z-component of w cross v)
+     * beta = (z-component of v cross z) / (z-component of v cross w)
+     * @param z Arbitrary 2D vector
+     */
     toCoefficients(z: Vector): Vector {
-        return new Vector(z.dot(this.v) / this.v.norm(), z.dot(this.w) / this.w.norm());
+        let alpha = (this.w.x * z.y - this.w.y * z.x) / (this.w.x * this.v.y - this.w.y * this.v.x);
+        let beta = (this.v.x * z.y - this.v.y * z.x) / (this.v.x * this.w.y - this.v.y * this.w.x);
+        return new Vector(alpha, beta);
     }
 
+    /**
+     * Return weighted sum of basis vectors 
+     * @param z weights / coefficients (often integer)
+     */
     fromCoefficients(z: Vector): Vector {
         return this.v.scale(z.x).shift(this.w.scale(z.y));
     }
@@ -53,7 +75,25 @@ export class Basis {
 
 }
 
-export type BoundingBox = Array<Vector>;
+export class BoundingBox {
+
+    topLeft: Vector;
+    bottomRight: Vector;
+
+    constructor(topLeft: Vector, bottomRight: Vector) {
+        this.topLeft = topLeft;
+        this.bottomRight = bottomRight;
+    }
+
+    corners(): Array<Vector> {
+        return [this.topLeft, new Vector(this.topLeft.x, this.bottomRight.y), this.bottomRight, new Vector(this.bottomRight.x, this.topLeft.y)];
+    }
+
+    center(): Vector {
+        return new Vector((this.topLeft.x + this.bottomRight.x) / 2, (this.topLeft.y + this.bottomRight.y) / 2);
+    }
+
+}
 
 
 export interface Transformation { shift: Vector; scale: number; };

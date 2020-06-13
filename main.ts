@@ -1,16 +1,18 @@
 import { Vector, Basis, BoundingBox, Transformation, Unit } from "./typing";
 
 
-// /**
-//  * Return grid point nearest to given point.
-//  * @param basis Basis of 2D grid.
-//  * @param point Arbitrary 2D point.
-//  */
-// function nearestGridPoint(basis: Basis, point: Vector): Vector {
-
-
-
-// }
+/**
+ * Modify shift to get source + shift closer to target
+ * @param shift component of transformation
+ * @param basis defines 2D grid of pattern
+ * @param source center of scaled bounding box
+ * @param target center of canvas
+ */
+function getEquivalentShift(shift: Vector, basis: Basis, source: Vector, target: Vector): Vector {
+    let direction = target.shift((shift.shift(source)).negate());
+    let roundedDirection = basis.fromCoefficients(basis.toCoefficients(direction).round());
+    return shift.shift(roundedDirection);
+}
 
 
 function calculateShifts(boundingBox: BoundingBox, basis: Basis, width: number, height: number): Array<Vector> {
@@ -25,7 +27,7 @@ function calculateShifts(boundingBox: BoundingBox, basis: Basis, width: number, 
      * @param shift Integer coordinates in basis defined by vectorA, vectorB.
      */
     function overlaps(shift: Vector) {
-        for (const point of boundingBox) {
+        for (const point of boundingBox.corners()) {
             const t = basis.fromCoefficients(shift);
             const q = point.shift(t);
             if ((q.x >= 0) && (q.x <= width) && (q.y >= 0) && (q.y <= height)) {
@@ -104,7 +106,10 @@ function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transforma
 
 
 function transformBoundingBox(boundingBox: BoundingBox, transformation: Transformation): BoundingBox {
-    return boundingBox.map((vector: Vector) => vector.scale(transformation.scale).shift(transformation.shift));
+    return new BoundingBox(
+        boundingBox.topLeft.scale(transformation.scale).shift(transformation.shift),
+        boundingBox.bottomRight.scale(transformation.scale).shift(transformation.shift),
+    );
 }
 
 
@@ -127,9 +132,27 @@ class Tiling {
     }
 
     draw(ctx: CanvasRenderingContext2D) {
+
+        // Shift transformation by vector in span of basis to move bounding box close to canvas center.
+        let canvasCenter = new Vector(this.canvasWidth / 2, this.canvasHeight / 2);
+        this.transformation.shift = getEquivalentShift(
+            this.transformation.shift, this.basis.scale(this.transformation.scale), this.unit.boundingBox.center().scale(this.transformation.scale), canvasCenter
+        );
+
+        // Change bounding box, unit and basis by transformation.
         const boundingBox = transformBoundingBox(this.unit.boundingBox, this.transformation);
         let transformedDraw = transformDraw(this.unit.draw, this.transformation);
         let basis = this.basis.scale(this.transformation.scale);
+
+        // Draw bounding box. Very useful for debugging.
+        let debug = false;
+        if (debug) {
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = "blue";
+            ctx.rect(boundingBox.topLeft.x, boundingBox.topLeft.y, (boundingBox.bottomRight.x - boundingBox.topLeft.x), (boundingBox.bottomRight.y - boundingBox.topLeft.y));
+            ctx.stroke();
+        }
+            
         const shifts = calculateShifts(
             boundingBox, basis, this.canvasWidth, this.canvasHeight
         );
@@ -142,11 +165,6 @@ class Tiling {
         }
     }
 
-}
-
-
-function toCorners(topLeft: Vector, bottomRight: Vector): BoundingBox {
-    return [topLeft, new Vector(topLeft.x, bottomRight.y), bottomRight, new Vector(bottomRight.x, topLeft.y)];
 }
 
 
@@ -164,7 +182,7 @@ const littleBirdStar: Unit = {
         ctx.lineTo(r, 0);
         ctx.restore();
     },
-    boundingBox: toCorners(new Vector(-1, -1), new Vector(1, 1))
+    boundingBox: new BoundingBox(new Vector(-1, -1), new Vector(1, 1))
 }
 
 
@@ -189,7 +207,7 @@ const littleBirdWing: Unit = {
     },
     boundingBox: (function () {
         let r = 3 * Math.sqrt(3) / 2;
-        return toCorners(new Vector(-r, -r), new Vector(r, r));
+        return new BoundingBox(new Vector(-r, -r + 2), new Vector(r, r + 2));
     })()
 }
 
