@@ -12,12 +12,12 @@ export class Vector {
         return new Vector(this.x * alpha, this.y * alpha);
     }
 
-    shift(vector: Vector): Vector {
+    add(vector: Vector): Vector {
         return new Vector(this.x + vector.x, this.y + vector.y);
     }
 
-    negate(): Vector {
-        return new Vector(-this.x, -this.y);
+    subtract(vector: Vector): Vector {
+        return new Vector(this.x - vector.x, this.y - vector.y);
     }
 
     copy(): Vector {
@@ -66,7 +66,7 @@ export class Basis {
      * @param z weights / coefficients (often integer)
      */
     fromCoefficients(z: Vector): Vector {
-        return this.v.scale(z.x).shift(this.w.scale(z.y));
+        return this.v.scale(z.x).add(this.w.scale(z.y));
     }
 
     scale(t: number): Basis {
@@ -93,8 +93,15 @@ export class Rectangle {
         return new Vector((this.topLeft.x + this.bottomRight.x) / 2, (this.topLeft.y + this.bottomRight.y) / 2);
     }
 
-    shift(v: Vector): Rectangle {
-        return new Rectangle(this.topLeft.shift(v), this.bottomRight.shift(v));
+    translate(v: Vector): Rectangle {
+        return new Rectangle(this.topLeft.add(v), this.bottomRight.add(v));
+    }
+
+    transform(transformation: Transformation): Rectangle {
+        return new Rectangle(
+            transformation.transform(this.topLeft),
+            transformation.transform(this.bottomRight),
+        ); 
     }
 
     /**
@@ -118,7 +125,21 @@ export class Rectangle {
 }
 
 
-export interface Transformation { shift: Vector; scale: number; };
+export class Transformation {
+
+    translation: Vector;
+    scaling: number;
+
+    constructor(translation: Vector, scaling: number) {
+        this.translation = translation;
+        this.scaling = scaling;
+    }
+
+    transform(v: Vector) {
+        return v.scale(this.scaling).add(this.translation);
+    }
+
+}
 
 export interface Unit {
     draw: (ctx: CanvasRenderingContext2D) => void;
