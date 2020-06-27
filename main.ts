@@ -119,7 +119,7 @@ const littleBirdWing: Unit = {
 
 function withFill(draw: Drawable, fillStyle?: string): Drawable {
 
-    function drawWithFill(ctx: CanvasRenderingContext2D, transformation: Transformation) {
+    function drawWithFill(ctx: CanvasRenderingContext2D, transformation: Transformation): void {
         ctx.beginPath();
         draw(ctx, transformation);
         if (fillStyle) {
@@ -129,6 +129,15 @@ function withFill(draw: Drawable, fillStyle?: string): Drawable {
     }
 
     return drawWithFill;
+
+}
+
+function withModifyTransformation(draw: Drawable, modifyTransformation: (t: Transformation) => Transformation): Drawable {
+
+    function drawModified(ctx: CanvasRenderingContext2D, transformation: Transformation): void {
+        draw(ctx, modifyTransformation(transformation));
+    }
+    return drawModified;
 
 }
 
@@ -155,29 +164,35 @@ class Pattern {
         let colour_order = ["black", "orange", "green", "blue"];
 
         for (let i = 0; i < 4; i++) {
-            let t = new Transformation(
-                new Vector(
-                    transformation.translation.x + i * Math.sqrt(3) * transformation.scaling,
-                    transformation.translation.y + 3 * i * transformation.scaling
-                ),
-                transformation.scaling,
-            )
+            const modifyTransformation = (transformation: Transformation): Transformation => {
+                return new Transformation(
+                    new Vector(
+                        transformation.translation.x + i * Math.sqrt(3) * transformation.scaling,
+                        transformation.translation.y + 3 * i * transformation.scaling
+                    ),
+                    transformation.scaling,
+                )
+            }
             let starTiling = createTiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
             starTiling = withFill(starTiling, this.colours[colour_order[i]]);
-            starTiling(ctx, t);
+            starTiling = withModifyTransformation(starTiling, modifyTransformation);
+            starTiling(ctx, transformation);
         }
 
         for (let i = 0; i < 4; i++) {
-            let t = new Transformation(
-                new Vector(
-                    transformation.translation.x + i * 2 * Math.sqrt(3) * transformation.scaling,
-                    transformation.translation.y
-                ),
-                transformation.scaling,
-            )
+            const modifyTransformation = (transformation: Transformation): Transformation => {
+                return new Transformation(
+                    new Vector(
+                        transformation.translation.x + i * 2 * Math.sqrt(3) * transformation.scaling,
+                        transformation.translation.y
+                    ),
+                    transformation.scaling,
+                )
+            }
             let wingTiling = createTiling(littleBirdWing, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
             wingTiling = withFill(wingTiling, this.colours[colour_order[i]]);
-            wingTiling(ctx, t);
+            wingTiling = withModifyTransformation(wingTiling, modifyTransformation);
+            wingTiling(ctx, transformation);
         }
 
     }
