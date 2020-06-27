@@ -29,31 +29,22 @@ function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transforma
 /**
  * Unit repeated across a 2D grid.
  */
-class Tiling {
-    unit: Unit;
-    basis: Basis;
-    canvas: Rectangle;
+function createTiling(unit: Unit, basis: Basis, canvas: Rectangle) {
 
-    constructor(unit: Unit, basis: Basis, canvas: Rectangle) {
-        this.unit = unit;
-        this.basis = basis;
-        this.canvas = canvas;
-    }
-
-    draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
+    function draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
 
         // Shift transformation by vector in span of basis to move bounding box close to canvas center.
         const t = new Transformation(getEquivalentTranslation(
             transformation.translation,
-            this.basis.scale(transformation.scaling),
-            this.unit.boundingBox.center().scale(transformation.scaling),
-            this.canvas.center()
+            basis.scale(transformation.scaling),
+            unit.boundingBox.center().scale(transformation.scaling),
+            canvas.center()
         ), transformation.scaling);
 
         // Change bounding box, unit and basis by transformation.
-        const boundingBox = this.unit.boundingBox.transform(t);
-        let transformedDraw = transformDraw(this.unit.draw, t);
-        let basis = this.basis.scale(t.scaling);
+        const boundingBox = unit.boundingBox.transform(t);
+        let transformedDraw = transformDraw(unit.draw, t);
+        let transformedBasis = basis.scale(t.scaling);
 
         // Draw bounding box. Very useful for debugging.
         let debug = false;
@@ -64,15 +55,17 @@ class Tiling {
             ctx.stroke();
         }
 
-        const shifts = generateCovering(boundingBox, basis, this.canvas);
+        const shifts = generateCovering(boundingBox, transformedBasis, canvas);
         for (const shift of shifts) {
-            const t = basis.fromCoefficients(shift);
+            const t = transformedBasis.fromCoefficients(shift);
             ctx.save();
             ctx.translate(t.x, t.y);
             transformedDraw(ctx);
             ctx.restore();
         }
     }
+
+    return draw;
 
 }
 
@@ -151,8 +144,8 @@ class Pattern {
                 ),
                 transformation.scaling,
             )
-            let starTiling = new Tiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
-            starTiling.draw(ctx, t);
+            let starTiling = createTiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
+            starTiling(ctx, t);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
         }
@@ -166,8 +159,8 @@ class Pattern {
                 ),
                 transformation.scaling,
             )
-            let wingTiling = new Tiling(littleBirdWing, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
-            wingTiling.draw(ctx, t);
+            let wingTiling = createTiling(littleBirdWing, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
+            wingTiling(ctx, t);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
         }
