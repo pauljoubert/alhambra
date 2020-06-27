@@ -5,20 +5,6 @@ type Drawable = (ctx: CanvasRenderingContext2D, transformation: Transformation) 
 const sqrt3 = Math.sqrt(3);
 
 
-/**
- * Modify translation to get source + translation closer to target
- * @param translation component of transformation
- * @param basis defines 2D grid of pattern
- * @param source center of scaled bounding box
- * @param target center of canvas
- */
-function getEquivalentTranslation(translation: Vector, basis: Basis, source: Vector, target: Vector): Vector {
-    let direction = target.subtract(translation.add(source));
-    let roundedDirection = basis.fromCoefficients(basis.toCoefficients(direction).round());
-    return translation.add(roundedDirection);
-}
-
-
 function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transformation: Transformation) {
     return function (ctx: CanvasRenderingContext2D) {
         ctx.save();
@@ -30,42 +16,46 @@ function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transforma
 }
 
 
+function transformUnit(unit: Unit, transformation: Transformation): Unit {
+    return {
+        draw: transformDraw(unit.draw, transformation),
+        boundingBox: unit.boundingBox.transform(transformation)
+    }
+}
+
+
+function drawRectangle(ctx: CanvasRenderingContext2D, rectangle: Rectangle, lineWidth = 5, strokeStyle = "blue") {
+    ctx.lineWidth = lineWidth;
+    ctx.strokeStyle = strokeStyle;
+    ctx.rect(rectangle.topLeft.x, rectangle.topLeft.y, rectangle.width(), rectangle.height());
+    ctx.stroke();
+}
+
+
 /**
  * Unit repeated across a 2D grid.
  */
-function createTiling(unit: Unit, basis: Basis, canvas: Rectangle): Drawable {
+function createTiling(unitOriginal: Unit, basisOriginal: Basis, canvas: Rectangle): Drawable {
 
     function draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
 
-        // Shift transformation by vector in span of basis to move bounding box close to canvas center.
-        const t = new Transformation(getEquivalentTranslation(
-            transformation.translation,
-            basis.scale(transformation.scaling),
-            unit.boundingBox.center().scale(transformation.scaling),
-            canvas.center()
-        ), transformation.scaling);
-
-        // Change bounding box, unit and basis by transformation.
-        const boundingBox = unit.boundingBox.transform(t);
-        let transformedDraw = transformDraw(unit.draw, t);
-        let transformedBasis = basis.scale(t.scaling);
+        let unit = transformUnit(unitOriginal, transformation);
+        let basis = basisOriginal.scale(transformation.scaling);
+        
+        // Translate unit by vector in span of basis to move bounding box close to canvas center.
+        let difference = canvas.center().subtract(unit.boundingBox.center());
+        const roundedDifference = basis.fromCoefficients(basis.toCoefficients(difference).round());
+        unit = transformUnit(unit, new Transformation(roundedDifference, 1));
 
         // Draw bounding box. Very useful for debugging.
-        let debug = false;
+        let debug = true;
         if (debug) {
-            ctx.lineWidth = 5;
-            ctx.strokeStyle = "blue";
-            ctx.rect(boundingBox.topLeft.x, boundingBox.topLeft.y, (boundingBox.bottomRight.x - boundingBox.topLeft.x), (boundingBox.bottomRight.y - boundingBox.topLeft.y));
-            ctx.stroke();
+            drawRectangle(ctx, unit.boundingBox);
         }
 
-        const shifts = generateCovering(boundingBox, transformedBasis, canvas);
-        for (const shift of shifts) {
-            const t = transformedBasis.fromCoefficients(shift);
-            ctx.save();
-            ctx.translate(t.x, t.y);
-            transformedDraw(ctx);
-            ctx.restore();
+        for (const coefficients of generateCovering(unit.boundingBox, basis, canvas)) {
+            const t = basis.fromCoefficients(coefficients);
+            transformDraw(unit.draw, new Transformation(t, 1))(ctx);
         }
     }
 
