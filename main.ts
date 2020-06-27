@@ -103,7 +103,7 @@ function generateCovering(boundingBox: Rectangle, basis: Basis, canvas: Rectangl
         coefficients = coefficients.concat([...horizontalRange]);
     }
     for (const horizontalRange of createSearchVertical(centerRange, translatedBoundingBoxOverlapsCanvas, false)) {
-        coefficients = coefficients.concat([...horizontalRange];
+        coefficients = coefficients.concat([...horizontalRange]);
     }
 
     return coefficients;
