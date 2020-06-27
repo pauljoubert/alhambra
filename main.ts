@@ -31,31 +31,29 @@ function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transforma
  */
 class Tiling {
     unit: Unit;
-    transformation: Transformation;
     basis: Basis;
     canvas: Rectangle;
 
-    constructor(unit: Unit, transformation: Transformation, basis: Basis, canvas: Rectangle) {
+    constructor(unit: Unit, basis: Basis, canvas: Rectangle) {
         this.unit = unit;
-        this.transformation = transformation;
         this.basis = basis;
         this.canvas = canvas;
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
 
         // Shift transformation by vector in span of basis to move bounding box close to canvas center.
-        this.transformation.translation = getEquivalentTranslation(
-            this.transformation.translation,
-            this.basis.scale(this.transformation.scaling),
-            this.unit.boundingBox.center().scale(this.transformation.scaling),
+        const t = new Transformation(getEquivalentTranslation(
+            transformation.translation,
+            this.basis.scale(transformation.scaling),
+            this.unit.boundingBox.center().scale(transformation.scaling),
             this.canvas.center()
-        );
+        ), transformation.scaling);
 
         // Change bounding box, unit and basis by transformation.
-        const boundingBox = this.unit.boundingBox.transform(this.transformation);
-        let transformedDraw = transformDraw(this.unit.draw, this.transformation);
-        let basis = this.basis.scale(this.transformation.scaling);
+        const boundingBox = this.unit.boundingBox.transform(t);
+        let transformedDraw = transformDraw(this.unit.draw, t);
+        let basis = this.basis.scale(t.scaling);
 
         // Draw bounding box. Very useful for debugging.
         let debug = false;
@@ -125,11 +123,9 @@ const littleBirdWing: Unit = {
 
 class Pattern {
     canvas: Rectangle;
-    transformation: Transformation;
 
     constructor(canvasWidth: number, canvasHeight: number) {
         this.canvas = new Rectangle(new Vector(0, 0), new Vector(canvasWidth, canvasHeight));
-        this.transformation = new Transformation(new Vector(600, 400), 40);
     }
 
     colours: { [key: string]: string } = {
@@ -139,12 +135,10 @@ class Pattern {
         "blue": "rgb(81, 122, 184)",
     }
 
-    draw(ctx: CanvasRenderingContext2D) {
+    draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
 
         ctx.fillStyle = "white";
         ctx.fillRect(this.canvas.topLeft.x, this.canvas.topLeft.y, this.canvas.width(), this.canvas.height());
-
-
 
         let colour_order = ["black", "orange", "green", "blue"];
 
@@ -152,13 +146,13 @@ class Pattern {
             ctx.beginPath();
             let t = new Transformation(
                 new Vector(
-                    this.transformation.translation.x + i * Math.sqrt(3) * this.transformation.scaling,
-                    this.transformation.translation.y + 3 * i * this.transformation.scaling
+                    transformation.translation.x + i * Math.sqrt(3) * transformation.scaling,
+                    transformation.translation.y + 3 * i * transformation.scaling
                 ),
-                this.transformation.scaling,
+                transformation.scaling,
             )
-            let starTiling = new Tiling(littleBirdStar, t, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
-            starTiling.draw(ctx);
+            let starTiling = new Tiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
+            starTiling.draw(ctx, t);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
         }
@@ -167,13 +161,13 @@ class Pattern {
             ctx.beginPath();
             let t = new Transformation(
                 new Vector(
-                    this.transformation.translation.x + i * 2 * Math.sqrt(3) * this.transformation.scaling,
-                    this.transformation.translation.y
+                    transformation.translation.x + i * 2 * Math.sqrt(3) * transformation.scaling,
+                    transformation.translation.y
                 ),
-                this.transformation.scaling,
+                transformation.scaling,
             )
-            let wingTiling = new Tiling(littleBirdWing, t, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
-            wingTiling.draw(ctx);
+            let wingTiling = new Tiling(littleBirdWing, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
+            wingTiling.draw(ctx, t);
             ctx.fillStyle = this.colours[colour_order[i]];
             ctx.fill();
         }
@@ -190,9 +184,11 @@ if (canvas != null) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
+        let transformation = new Transformation(new Vector(600, 400), 40);
+
         let pattern = new Pattern(canvas.width, canvas.height);
 
-        pattern.draw(ctx);
+        pattern.draw(ctx, transformation);
 
 
         document.addEventListener('keydown', (event) => {
@@ -201,26 +197,26 @@ if (canvas != null) {
 
             switch (event.code) {
                 case 'Minus':
-                    pattern.transformation.scaling *= 0.99;
+                    transformation.scaling *= 0.99;
                     break;
                 case 'Equal':
-                    pattern.transformation.scaling *= 1.01;
+                    transformation.scaling *= 1.01;
                     break;
                 case 'ArrowRight':
-                    pattern.transformation.translation.x += shiftSpeed;
+                    transformation.translation.x += shiftSpeed;
                     break;
                 case 'ArrowLeft':
-                    pattern.transformation.translation.x -= shiftSpeed;
+                    transformation.translation.x -= shiftSpeed;
                     break;
                 case 'ArrowUp':
-                    pattern.transformation.translation.y -= shiftSpeed;
+                    transformation.translation.y -= shiftSpeed;
                     break;
                 case 'ArrowDown':
-                    pattern.transformation.translation.y += shiftSpeed;
+                    transformation.translation.y += shiftSpeed;
                     break;
             }
 
-            pattern.draw(ctx);
+            pattern.draw(ctx, transformation);
 
         }, false);
 
@@ -238,9 +234,9 @@ if (canvas != null) {
 
         document.addEventListener('mousemove', e => {
             if (mouseDown === true) {
-                pattern.transformation.translation.x += e.offsetX - mouseX;
-                pattern.transformation.translation.y += e.offsetY - mouseY;
-                pattern.draw(ctx);
+                transformation.translation.x += e.offsetX - mouseX;
+                transformation.translation.y += e.offsetY - mouseY;
+                pattern.draw(ctx, transformation);
                 mouseX = e.offsetX;
                 mouseY = e.offsetY;
             }
@@ -248,9 +244,9 @@ if (canvas != null) {
 
         document.addEventListener('mouseup', e => {
             if (mouseDown === true) {
-                pattern.transformation.translation.x += e.offsetX - mouseX;
-                pattern.transformation.translation.y += e.offsetY - mouseY;
-                pattern.draw(ctx);
+                transformation.translation.x += e.offsetX - mouseX;
+                transformation.translation.y += e.offsetY - mouseY;
+                pattern.draw(ctx, transformation);
                 mouseDown = false;
             }
         });
@@ -260,13 +256,13 @@ if (canvas != null) {
                 return;
             }
             let r = e.deltaY > 0 ? 0.98 : 1.02;
-            let t = pattern.transformation;
+            let t = transformation;
             let correctionX = (e.offsetX - t.translation.x) * (r - 1);
             let correctionY = (e.offsetY - t.translation.y) * (r - 1);
             t.scaling *= r;
             t.translation.x -= correctionX;
             t.translation.y -= correctionY;
-            pattern.draw(ctx);
+            pattern.draw(ctx, transformation);
         });
 
     }
