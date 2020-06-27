@@ -20,22 +20,20 @@ class HorizontalRange {
     right: Vector;
 
     constructor(left: Vector, right: Vector) {
-        // assert left.y === right.y, left.x <= right.x
+        if (left.y !== right.y) {
+            throw new Error(`y values should be equal (${left.y} != ${right.y})`);
+        }
+        if (left.x > right.x) {
+            throw new Error(`vectors should be ordered by x coordinate (${left.x} > ${right.x})`);
+        }
         this.left = left;
         this.right = right;
     }
 
-    toArray() {
-        // TODO: should be a generator
-        let vectors: Array<Vector> = [];
+    *[Symbol.iterator]() {
         for (let x = this.left.x; x <= this.right.x; x++) {
-            vectors.push(new Vector(x, this.left.y));
+            yield new Vector(x, this.left.y);
         }
-        return vectors;
-    }
-
-    length() {
-        return this.right.x - this.left.x + 1;
     }
 
 }
@@ -43,11 +41,12 @@ class HorizontalRange {
 
 function searchHorizontal(initial: Vector, valid: (v: Vector) => boolean, ascending = true): Vector {
     let v = initial.copy();
-    v.x += ascending ? 1 : -1;
+    const dx = ascending ? 1 : -1;
+    v.x += dx;
     while (valid(v)) {
-        v.x += ascending ? 1 : -1;
+        v.x += dx;
     }
-    return new Vector(v.x + (ascending ? -1 : 1), v.y);
+    return new Vector(v.x - dx, v.y);
 }
 
 
@@ -85,10 +84,10 @@ function* createSearchVertical(initial: HorizontalRange, valid: (v: Vector) => b
 
 }
 
-
+/**
+ * Return coefficients in basis for all vectors by which to shift boundingBox to cover canvas.
+ */
 function generateCovering(boundingBox: Rectangle, basis: Basis, canvas: Rectangle): Array<Vector> {
-    // Return list of pairs of integers, linear combinations of vectors by which
-    // boundingBox can be shifted while still overlapping with canvas 
 
     function translatedBoundingBoxOverlapsCanvas(coefficients: Vector) {
         return boundingBox.translate(basis.fromCoefficients(coefficients)).overlaps(canvas);
@@ -97,14 +96,14 @@ function generateCovering(boundingBox: Rectangle, basis: Basis, canvas: Rectangl
     const origin = new Vector(0, 0);
     const leftMost = searchLeft(origin, translatedBoundingBoxOverlapsCanvas);
     const rightMost = searchRight(origin, translatedBoundingBoxOverlapsCanvas);
-    const originHorizontalRange = new HorizontalRange(leftMost, rightMost);
+    const centerRange = new HorizontalRange(leftMost, rightMost);
 
-    let coefficients: Array<Vector> = originHorizontalRange.toArray();
-    for (const horizontalRange of createSearchVertical(originHorizontalRange, translatedBoundingBoxOverlapsCanvas, true)) {
-        coefficients = coefficients.concat(horizontalRange.toArray());
+    let coefficients: Array<Vector> = [...centerRange];
+    for (const horizontalRange of createSearchVertical(centerRange, translatedBoundingBoxOverlapsCanvas, true)) {
+        coefficients = coefficients.concat([...horizontalRange]);
     }
-    for (const horizontalRange of createSearchVertical(originHorizontalRange, translatedBoundingBoxOverlapsCanvas, false)) {
-        coefficients = coefficients.concat(horizontalRange.toArray());
+    for (const horizontalRange of createSearchVertical(centerRange, translatedBoundingBoxOverlapsCanvas, false)) {
+        coefficients = coefficients.concat([...horizontalRange];
     }
 
     return coefficients;
