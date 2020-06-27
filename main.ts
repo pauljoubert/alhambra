@@ -1,6 +1,9 @@
 import { Vector, Basis, Rectangle, Transformation, Unit } from "./typing";
 import { generateCovering } from "./covering";
 
+type Drawable = (ctx: CanvasRenderingContext2D, transformation: Transformation) => void;
+
+
 /**
  * Modify translation to get source + translation closer to target
  * @param translation component of transformation
@@ -114,6 +117,22 @@ const littleBirdWing: Unit = {
 }
 
 
+function withFill(draw: Drawable, fillStyle?: string): Drawable {
+
+    function drawWithFill(ctx: CanvasRenderingContext2D, transformation: Transformation) {
+        ctx.beginPath();
+        draw(ctx, transformation);
+        if (fillStyle) {
+            ctx.fillStyle = fillStyle;
+        }
+        ctx.fill();
+    }
+
+    return drawWithFill;
+
+}
+
+
 class Pattern {
     canvas: Rectangle;
 
@@ -136,7 +155,6 @@ class Pattern {
         let colour_order = ["black", "orange", "green", "blue"];
 
         for (let i = 0; i < 4; i++) {
-            ctx.beginPath();
             let t = new Transformation(
                 new Vector(
                     transformation.translation.x + i * Math.sqrt(3) * transformation.scaling,
@@ -145,13 +163,11 @@ class Pattern {
                 transformation.scaling,
             )
             let starTiling = createTiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
+            starTiling = withFill(starTiling, this.colours[colour_order[i]]);
             starTiling(ctx, t);
-            ctx.fillStyle = this.colours[colour_order[i]];
-            ctx.fill();
         }
 
         for (let i = 0; i < 4; i++) {
-            ctx.beginPath();
             let t = new Transformation(
                 new Vector(
                     transformation.translation.x + i * 2 * Math.sqrt(3) * transformation.scaling,
@@ -160,9 +176,8 @@ class Pattern {
                 transformation.scaling,
             )
             let wingTiling = createTiling(littleBirdWing, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
+            wingTiling = withFill(wingTiling, this.colours[colour_order[i]]);
             wingTiling(ctx, t);
-            ctx.fillStyle = this.colours[colour_order[i]];
-            ctx.fill();
         }
 
     }
