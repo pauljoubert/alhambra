@@ -2,6 +2,7 @@ import { Vector, Basis, Rectangle, Transformation, Unit } from "./typing";
 import { generateCovering } from "./covering";
 
 type Drawable = (ctx: CanvasRenderingContext2D, transformation: Transformation) => void;
+const sqrt3 = Math.sqrt(3);
 
 
 /**
@@ -32,7 +33,7 @@ function transformDraw(draw: (ctx: CanvasRenderingContext2D) => void, transforma
 /**
  * Unit repeated across a 2D grid.
  */
-function createTiling(unit: Unit, basis: Basis, canvas: Rectangle) {
+function createTiling(unit: Unit, basis: Basis, canvas: Rectangle): Drawable {
 
     function draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
 
@@ -75,7 +76,7 @@ function createTiling(unit: Unit, basis: Basis, canvas: Rectangle) {
 
 const littleBirdStar: Unit = {
     draw: function (ctx: CanvasRenderingContext2D) {
-        let r = Math.sqrt(3) - 1;
+        let r = sqrt3 - 1;
 
         ctx.moveTo(r, 0);
         ctx.save();
@@ -93,16 +94,15 @@ const littleBirdStar: Unit = {
 
 const littleBirdWing: Unit = {
     draw: function (ctx: CanvasRenderingContext2D) {
-        let sqrt3 = Math.sqrt(3);
-        let r = sqrt3 - 1;
+        const r = sqrt3 - 1;
 
         ctx.save();
         ctx.translate(0, 2);
         for (let i = 0; i < 3; i++) {
             ctx.moveTo(0.5 * r, r * sqrt3 / 2);
             ctx.arc(0.5 * sqrt3, 1.5, 1, 4 * Math.PI / 3, 3 * Math.PI / 2);
-            ctx.arc(Math.sqrt(3) / 2, -0.5, 1, Math.PI / 2, (11 / 6) * Math.PI, true);
-            ctx.arc(Math.sqrt(3) / 2, -1.5, 1, Math.PI / 6, (2 / 3) * Math.PI);
+            ctx.arc(sqrt3 / 2, -0.5, 1, Math.PI / 2, (11 / 6) * Math.PI, true);
+            ctx.arc(sqrt3 / 2, -1.5, 1, Math.PI / 6, (2 / 3) * Math.PI);
             ctx.lineTo(r, 0);
             ctx.lineTo(0.5 * r, r * sqrt3 / 2);
             ctx.rotate((2 / 3) * Math.PI);
@@ -111,7 +111,7 @@ const littleBirdWing: Unit = {
         ctx.restore();
     },
     boundingBox: (function () {
-        let r = 3 * Math.sqrt(3) / 2;
+        let r = 3 * sqrt3 / 2;
         return new Rectangle(new Vector(-r, -r + 2), new Vector(r, r + 2));
     })()
 }
@@ -119,7 +119,7 @@ const littleBirdWing: Unit = {
 
 function withFill(draw: Drawable, fillStyle?: string): Drawable {
 
-    function drawWithFill(ctx: CanvasRenderingContext2D, transformation: Transformation): void {
+    return (ctx, transformation) => {
         ctx.beginPath();
         draw(ctx, transformation);
         if (fillStyle) {
@@ -128,74 +128,70 @@ function withFill(draw: Drawable, fillStyle?: string): Drawable {
         ctx.fill();
     }
 
-    return drawWithFill;
-
 }
+
 
 function withModifyTransformation(draw: Drawable, modifyTransformation: (t: Transformation) => Transformation): Drawable {
 
-    function drawModified(ctx: CanvasRenderingContext2D, transformation: Transformation): void {
-        draw(ctx, modifyTransformation(transformation));
-    }
-    return drawModified;
+    return (ctx, transformation) => draw(ctx, modifyTransformation(transformation));
 
 }
 
 
-class Pattern {
-    canvas: Rectangle;
+function joinDrawables(drawables: Drawable[]): Drawable {
 
-    constructor(canvasWidth: number, canvasHeight: number) {
-        this.canvas = new Rectangle(new Vector(0, 0), new Vector(canvasWidth, canvasHeight));
+    return (ctx, transformation) => {
+        for (const drawable of drawables) {
+            drawable(ctx, transformation);
+        }
     }
 
-    colours: { [key: string]: string } = {
+}
+
+function drawBackground(canvas: Rectangle): Drawable {
+
+    return (ctx, _) => {
+        ctx.fillStyle = "white";
+        ctx.fillRect(canvas.topLeft.x, canvas.topLeft.y, canvas.width(), canvas.height());
+    }
+}
+
+
+function createLittleBirdPattern(canvas: Rectangle): Drawable {
+
+    const colours: { [key: string]: string } = {
         "black": "black",
         "orange": "rgb(176, 93, 37)",
         "green": "rgb(35, 98, 45)",
         "blue": "rgb(81, 122, 184)",
     }
 
-    draw(ctx: CanvasRenderingContext2D, transformation: Transformation) {
+    const colour_order = ["black", "orange", "green", "blue"];
 
-        ctx.fillStyle = "white";
-        ctx.fillRect(this.canvas.topLeft.x, this.canvas.topLeft.y, this.canvas.width(), this.canvas.height());
+    const starTilingBase = createTiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * sqrt3, 0)), canvas);
+    const wingTilingBase = createTiling(littleBirdWing, new Basis(new Vector(-sqrt3, 3), new Vector(8 * sqrt3, 0)), canvas);
 
-        let colour_order = ["black", "orange", "green", "blue"];
+    let tilings: Drawable[] = [];
 
-        for (let i = 0; i < 4; i++) {
-            const modifyTransformation = (transformation: Transformation): Transformation => {
-                return new Transformation(
-                    new Vector(
-                        transformation.translation.x + i * Math.sqrt(3) * transformation.scaling,
-                        transformation.translation.y + 3 * i * transformation.scaling
-                    ),
-                    transformation.scaling,
-                )
-            }
-            let starTiling = createTiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * Math.sqrt(3), 0)), this.canvas);
-            starTiling = withFill(starTiling, this.colours[colour_order[i]]);
-            starTiling = withModifyTransformation(starTiling, modifyTransformation);
-            starTiling(ctx, transformation);
-        }
+    for (let i = 0; i < 4; i++) {
+        let starTiling = withFill(starTilingBase, colours[colour_order[i]]);
+        starTiling = withModifyTransformation(
+            starTiling,
+            (t) => new Transformation(
+                new Vector(t.translation.x + i * sqrt3 * t.scaling, t.translation.y + 3 * i * t.scaling), t.scaling,
+            )
+        );
+        tilings.push(starTiling);
 
-        for (let i = 0; i < 4; i++) {
-            const modifyTransformation = (transformation: Transformation): Transformation => {
-                return new Transformation(
-                    new Vector(
-                        transformation.translation.x + i * 2 * Math.sqrt(3) * transformation.scaling,
-                        transformation.translation.y
-                    ),
-                    transformation.scaling,
-                )
-            }
-            let wingTiling = createTiling(littleBirdWing, new Basis(new Vector(-Math.sqrt(3), 3), new Vector(8 * Math.sqrt(3), 0)), this.canvas);
-            wingTiling = withFill(wingTiling, this.colours[colour_order[i]]);
-            wingTiling = withModifyTransformation(wingTiling, modifyTransformation);
-            wingTiling(ctx, transformation);
-        }
-
+        let wingTiling = withFill(wingTilingBase, colours[colour_order[i]]);
+        wingTiling = withModifyTransformation(
+            wingTiling,
+            (t) => new Transformation(new Vector(t.translation.x + i * 2 * sqrt3 * t.scaling, t.translation.y), t.scaling)
+        );
+        tilings.push(wingTiling);
     }
+
+    return joinDrawables([drawBackground(canvas), ...tilings]);
 
 }
 
@@ -209,10 +205,10 @@ if (canvas != null) {
 
         let transformation = new Transformation(new Vector(600, 400), 40);
 
-        let pattern = new Pattern(canvas.width, canvas.height);
+        const canvasRectangle = new Rectangle(new Vector(0, 0), new Vector(canvas.width, canvas.height));
+        let pattern = createLittleBirdPattern(canvasRectangle);
 
-        pattern.draw(ctx, transformation);
-
+        pattern(ctx, transformation);
 
         document.addEventListener('keydown', (event) => {
 
@@ -239,7 +235,7 @@ if (canvas != null) {
                     break;
             }
 
-            pattern.draw(ctx, transformation);
+            pattern(ctx, transformation);
 
         }, false);
 
@@ -259,7 +255,7 @@ if (canvas != null) {
             if (mouseDown === true) {
                 transformation.translation.x += e.offsetX - mouseX;
                 transformation.translation.y += e.offsetY - mouseY;
-                pattern.draw(ctx, transformation);
+                pattern(ctx, transformation);
                 mouseX = e.offsetX;
                 mouseY = e.offsetY;
             }
@@ -269,7 +265,7 @@ if (canvas != null) {
             if (mouseDown === true) {
                 transformation.translation.x += e.offsetX - mouseX;
                 transformation.translation.y += e.offsetY - mouseY;
-                pattern.draw(ctx, transformation);
+                pattern(ctx, transformation);
                 mouseDown = false;
             }
         });
@@ -285,7 +281,7 @@ if (canvas != null) {
             t.scaling *= r;
             t.translation.x -= correctionX;
             t.translation.y -= correctionY;
-            pattern.draw(ctx, transformation);
+            pattern(ctx, transformation);
         });
 
     }
