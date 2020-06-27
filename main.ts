@@ -15,71 +15,99 @@ function getEquivalentTranslation(translation: Vector, basis: Basis, source: Vec
 }
 
 
-function calculateShifts(boundingBox: Rectangle, basis: Basis, canvas: Rectangle): Array<Vector> {
+class HorizontalRange {
+    left: Vector;
+    right: Vector;
+
+    constructor(left: Vector, right: Vector) {
+        // assert left.y === right.y, left.x <= right.x
+        this.left = left;
+        this.right = right;
+    }
+
+    toArray() {
+        // TODO: should be a generator
+        let vectors: Array<Vector> = [];
+        for (let x = this.left.x; x <= this.right.x; x++) {
+            vectors.push(new Vector(x, this.left.y));
+        }
+        return vectors;
+    }
+
+    length() {
+        return this.right.x - this.left.x + 1;
+    }
+
+}
+
+
+function searchHorizontal(initial: Vector, valid: (v: Vector) => boolean, ascending = true): Vector {
+    let v = initial.copy();
+    v.x += ascending ? 1 : -1;
+    while (valid(v)) {
+        v.x += ascending ? 1 : -1;
+    }
+    return new Vector(v.x + (ascending ? -1 : 1), v.y);
+}
+
+
+const searchLeft = (initial: Vector, valid: (v: Vector) => boolean) => searchHorizontal(initial, valid, false);
+const searchRight = (initial: Vector, valid: (v: Vector) => boolean) => searchHorizontal(initial, valid, true);
+
+
+function* createSearchVertical(initial: HorizontalRange, valid: (v: Vector) => boolean, ascending = true) {
+
+    function searchVertical(current: HorizontalRange): HorizontalRange | null {
+        const y = current.left.y + (ascending ? 1 : -1);
+        const left = new Vector(current.left.x, y);
+        const right = new Vector(current.right.x, y);
+        let leftMost = searchLeft(left, valid);
+        let rightMost = searchRight(right, valid);
+
+        while (!valid(leftMost) && leftMost.x < rightMost.x) {
+            leftMost.x++;
+        }
+        while (!valid(rightMost) && leftMost.x < rightMost.x) {
+            rightMost.x--;
+        }
+        if (valid(leftMost)) {
+            return new HorizontalRange(leftMost, rightMost);
+        } else {
+            return null;
+        }
+    }
+
+    let horizontalRange = searchVertical(initial);
+    while (horizontalRange !== null) {
+        yield horizontalRange;
+        horizontalRange = searchVertical(horizontalRange);
+    }
+
+}
+
+
+function generateCovering(boundingBox: Rectangle, basis: Basis, canvas: Rectangle): Array<Vector> {
     // Return list of pairs of integers, linear combinations of vectors by which
     // boundingBox can be shifted while still overlapping with canvas 
 
-    /**
-     * Check if the shifted bounding box still overlaps the canvas.
-     * @param shift Integer coordinates in basis.
-     */
-    function overlaps(shift: Vector) {
-        return boundingBox.translate(basis.fromCoefficients(shift)).overlaps(canvas);
+    function translatedBoundingBoxOverlapsCanvas(coefficients: Vector) {
+        return boundingBox.translate(basis.fromCoefficients(coefficients)).overlaps(canvas);
     }
 
-    /**
-     * See how far we can move the bounding box left or right within the canvas.
-     * @param current 
-     * @param left 
-     */
-    function search(current: Vector, left = true): number {
-        let v = current.copy();
-        v.x += left ? -1 : 1;
-        while (overlaps(v)) {
-            v.x += left ? -1 : 1;
-        }
-        return v.x + (left ? 1 : -1);
+    const origin = new Vector(0, 0);
+    const leftMost = searchLeft(origin, translatedBoundingBoxOverlapsCanvas);
+    const rightMost = searchRight(origin, translatedBoundingBoxOverlapsCanvas);
+    const originHorizontalRange = new HorizontalRange(leftMost, rightMost);
+
+    let coefficients: Array<Vector> = originHorizontalRange.toArray();
+    for (const horizontalRange of createSearchVertical(originHorizontalRange, translatedBoundingBoxOverlapsCanvas, true)) {
+        coefficients = coefficients.concat(horizontalRange.toArray());
+    }
+    for (const horizontalRange of createSearchVertical(originHorizontalRange, translatedBoundingBoxOverlapsCanvas, false)) {
+        coefficients = coefficients.concat(horizontalRange.toArray());
     }
 
-    let leftMostX = search(new Vector(0, 0), true);
-    let rightMostX = search(new Vector(0, 0), false);
-
-    let shifts: Array<Vector> = [];
-    for (let x = leftMostX; x <= rightMostX; x++) {
-        shifts.push(new Vector(x, 0));
-    }
-    let originalBounds: Array<number> = [leftMostX, rightMostX];
-
-    function fillVertical(shifts: Array<Vector>, originalBounds: Array<number>, up = true) {
-        let valid = true;
-        let currentY = 0;
-        leftMostX = originalBounds[0];
-        rightMostX = originalBounds[1];
-        while (valid) {
-            currentY += (up ? 1 : -1);
-            valid = false;
-            leftMostX = search(new Vector(leftMostX, currentY), true);
-            rightMostX = search(new Vector(rightMostX, currentY), false);
-            let newRightMostX;
-            for (let x = leftMostX; x <= rightMostX; x++) {
-                let point = new Vector(x, currentY);
-                if (overlaps(point)) {
-                    shifts.push(point);
-                    if (!valid) {
-                        leftMostX = x;
-                        valid = true;
-                    }
-                    newRightMostX = x;
-                }
-            }
-            rightMostX = newRightMostX;
-        }
-    }
-
-    fillVertical(shifts, originalBounds, true);
-    fillVertical(shifts, originalBounds, false);
-
-    return shifts;
+    return coefficients;
 
 }
 
@@ -135,7 +163,7 @@ class Tiling {
             ctx.stroke();
         }
 
-        const shifts = calculateShifts(boundingBox, basis, this.canvas);
+        const shifts = generateCovering(boundingBox, basis, this.canvas);
         for (const shift of shifts) {
             const t = basis.fromCoefficients(shift);
             ctx.save();
@@ -201,7 +229,7 @@ class Pattern {
         this.transformation = new Transformation(new Vector(600, 400), 40);
     }
 
-    colours = {
+    colours: { [key: string]: string } = {
         "black": "black",
         "orange": "rgb(176, 93, 37)",
         "green": "rgb(35, 98, 45)",
@@ -212,6 +240,8 @@ class Pattern {
 
         ctx.fillStyle = "white";
         ctx.fillRect(this.canvas.topLeft.x, this.canvas.topLeft.y, this.canvas.width(), this.canvas.height());
+
+
 
         let colour_order = ["black", "orange", "green", "blue"];
 
@@ -251,87 +281,90 @@ class Pattern {
 
 
 const canvas = document.querySelector('canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+if (canvas != null) {
+    const ctx = canvas.getContext('2d');
+    if (ctx != null) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-let pattern = new Pattern(canvas.width, canvas.height);
+        let pattern = new Pattern(canvas.width, canvas.height);
 
-pattern.draw(ctx);
-
-
-
-document.addEventListener('keydown', (event) => {
-
-    let shiftSpeed = 5
-
-    switch (event.code) {
-        case 'Minus':
-            pattern.transformation.scaling *= 0.99;
-            break;
-        case 'Equal':
-            pattern.transformation.scaling *= 1.01;
-            break;
-        case 'ArrowRight':
-            pattern.transformation.translation.x += shiftSpeed;
-            break;
-        case 'ArrowLeft':
-            pattern.transformation.translation.x -= shiftSpeed;
-            break;
-        case 'ArrowUp':
-            pattern.transformation.translation.y -= shiftSpeed;
-            break;
-        case 'ArrowDown':
-            pattern.transformation.translation.y += shiftSpeed;
-            break;
-    }
-
-    pattern.draw(ctx);
-
-}, false);
-
-let mouseX = 0;
-let mouseY = 0;
-let mouseDown = false;
-
-
-document.addEventListener('mousedown', e => {
-    mouseX = e.offsetX;
-    mouseY = e.offsetY;
-    mouseDown = true;
-});
-
-
-document.addEventListener('mousemove', e => {
-    if (mouseDown === true) {
-        pattern.transformation.translation.x += e.offsetX - mouseX;
-        pattern.transformation.translation.y += e.offsetY - mouseY;
         pattern.draw(ctx);
-        mouseX = e.offsetX;
-        mouseY = e.offsetY;
-    }
-});
 
-document.addEventListener('mouseup', e => {
-    if (mouseDown === true) {
-        pattern.transformation.translation.x += e.offsetX - mouseX;
-        pattern.transformation.translation.y += e.offsetY - mouseY;
-        pattern.draw(ctx);
-        mouseDown = false;
-    }
-});
 
-document.addEventListener('wheel', e => {
-    if (e.deltaY === 0) {
-        return;
-    }
-    let r = e.deltaY > 0 ? 0.98 : 1.02;
-    let t = pattern.transformation;
-    let correctionX = (e.offsetX - t.translation.x) * (r - 1);
-    let correctionY = (e.offsetY - t.translation.y) * (r - 1);
-    t.scaling *= r;
-    t.translation.x -= correctionX;
-    t.translation.y -= correctionY;
-    pattern.draw(ctx);
-});
+        document.addEventListener('keydown', (event) => {
 
+            let shiftSpeed = 5
+
+            switch (event.code) {
+                case 'Minus':
+                    pattern.transformation.scaling *= 0.99;
+                    break;
+                case 'Equal':
+                    pattern.transformation.scaling *= 1.01;
+                    break;
+                case 'ArrowRight':
+                    pattern.transformation.translation.x += shiftSpeed;
+                    break;
+                case 'ArrowLeft':
+                    pattern.transformation.translation.x -= shiftSpeed;
+                    break;
+                case 'ArrowUp':
+                    pattern.transformation.translation.y -= shiftSpeed;
+                    break;
+                case 'ArrowDown':
+                    pattern.transformation.translation.y += shiftSpeed;
+                    break;
+            }
+
+            pattern.draw(ctx);
+
+        }, false);
+
+        let mouseX = 0;
+        let mouseY = 0;
+        let mouseDown = false;
+
+
+        document.addEventListener('mousedown', e => {
+            mouseX = e.offsetX;
+            mouseY = e.offsetY;
+            mouseDown = true;
+        });
+
+
+        document.addEventListener('mousemove', e => {
+            if (mouseDown === true) {
+                pattern.transformation.translation.x += e.offsetX - mouseX;
+                pattern.transformation.translation.y += e.offsetY - mouseY;
+                pattern.draw(ctx);
+                mouseX = e.offsetX;
+                mouseY = e.offsetY;
+            }
+        });
+
+        document.addEventListener('mouseup', e => {
+            if (mouseDown === true) {
+                pattern.transformation.translation.x += e.offsetX - mouseX;
+                pattern.transformation.translation.y += e.offsetY - mouseY;
+                pattern.draw(ctx);
+                mouseDown = false;
+            }
+        });
+
+        document.addEventListener('wheel', e => {
+            if (e.deltaY === 0) {
+                return;
+            }
+            let r = e.deltaY > 0 ? 0.98 : 1.02;
+            let t = pattern.transformation;
+            let correctionX = (e.offsetX - t.translation.x) * (r - 1);
+            let correctionY = (e.offsetY - t.translation.y) * (r - 1);
+            t.scaling *= r;
+            t.translation.x -= correctionX;
+            t.translation.y -= correctionY;
+            pattern.draw(ctx);
+        });
+
+    }
+}

@@ -10,5 +10,8 @@
   "license": "MIT",
   "devDependencies": {
     "typescript": "^3.9.5"
-  }
+  },
+  "browserslist": [
+    "since 2017-06"
+  ]  
 }
