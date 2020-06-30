@@ -9,9 +9,10 @@
   "author": "Paul",
   "license": "MIT",
   "devDependencies": {
+    "cssnano": "^4.1.10",
     "typescript": "^3.9.5"
   },
   "browserslist": [
     "since 2017-06"
-  ]  
+  ]
 }
