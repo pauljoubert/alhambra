@@ -17,13 +17,15 @@ if (canvas != null) {
 
         pattern(ctx, transformation);
 
-        addEventListenersKeyboard(document, ctx, pattern, transformation);
+        addEventListenersKeyboard(document, ctx, pattern, transformation, canvasRectangle.center());
         addEventListenersMouse(document, ctx, pattern, transformation);
     }
 }
 
 
-function addEventListenersKeyboard(document: Document, ctx: CanvasRenderingContext2D, pattern: Drawable, transformation: Transformation) {
+function addEventListenersKeyboard(
+    document: Document, ctx: CanvasRenderingContext2D, pattern: Drawable, transformation: Transformation, canvasCenter: Vector
+) {
 
     document.addEventListener('keydown', (event) => {
 
@@ -31,10 +33,10 @@ function addEventListenersKeyboard(document: Document, ctx: CanvasRenderingConte
 
         switch (event.code) {
             case 'Minus':
-                transformation.scaling *= 0.98;
+                zoom(transformation, canvasCenter, 0.98)
                 break;
             case 'Equal':
-                transformation.scaling *= 1.02;
+                zoom(transformation, canvasCenter, 1.02)
                 break;
             case 'ArrowRight':
                 transformation.translation.x += shiftSpeed;
@@ -94,13 +96,14 @@ function addEventListenersMouse(document: Document, ctx: CanvasRenderingContext2
         if (e.deltaY === 0) {
             return;
         }
-        let r = e.deltaY > 0 ? 0.98 : 1.02;
-        let t = transformation;
-        let correctionX = (e.offsetX - t.translation.x) * (r - 1);
-        let correctionY = (e.offsetY - t.translation.y) * (r - 1);
-        t.scaling *= r;
-        t.translation.x -= correctionX;
-        t.translation.y -= correctionY;
+        let factor = e.deltaY > 0 ? 0.98 : 1.02;
+        zoom(transformation, new Vector(e.offsetX, e.offsetY), factor)
         pattern(ctx, transformation);
     });
+}
+
+
+function zoom(transformation: Transformation, center: Vector, ratio: number) {
+    transformation.scaling *= ratio;
+    transformation.translation = transformation.translation.scale(ratio).subtract(center.scale(ratio - 1));
 }
