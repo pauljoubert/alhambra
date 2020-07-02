@@ -103,11 +103,11 @@ function addEventListenersPointer(
                 let center = point0.add(point1).scale(0.5);
 
                 if (previousDistance > 0) {
-                    if (currentDistance > (previousDistance + 5)) {
+                    if (currentDistance > (previousDistance + 1)) {
                         // The distance between the two pointers has increased, zoom in
                         zoom(transformation, center, 1.02)
                     }
-                    if (currentDistance < (previousDistance - 5)) {
+                    if (currentDistance < (previousDistance - 1)) {
                         // The distance between the two pointers has decreased, zoom out
                         zoom(transformation, center, 0.98)
                     }
