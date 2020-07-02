@@ -11,3 +11,7 @@ body {
     overflow: hidden;
     height: inherit;
 }
+
+canvas {
+    touch-action: none;
+}
