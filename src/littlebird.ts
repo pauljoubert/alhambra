@@ -31,12 +31,12 @@ export function createLittleBirdPattern(canvas: Rectangle): Drawable {
         );
         tilings.push(starTiling);
 
-        let wingTiling = withFill(wingTilingReference, colours[colour_order[i]]);
-        wingTiling = withModifyTransformation(
-            wingTiling,
-            (t) => new Transformation(new Vector(t.translation.x + i * 2 * sqrt3 * t.scaling, t.translation.y), t.scaling)
-        );
-        tilings.push(wingTiling);
+        // let wingTiling = withFill(wingTilingReference, colours[colour_order[i]]);
+        // wingTiling = withModifyTransformation(
+        //     wingTiling,
+        //     (t) => new Transformation(new Vector(t.translation.x + i * 2 * sqrt3 * t.scaling, t.translation.y), t.scaling)
+        // );
+        // tilings.push(wingTiling);
     }
 
     return joinDrawables([drawBackground(canvas), ...tilings]);
