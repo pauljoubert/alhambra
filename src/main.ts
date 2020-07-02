@@ -81,13 +81,13 @@ function addEventListenersPointer(
 
     document.addEventListener('pointermove', e => {
         if (pointerDown) {
-            if (pointerEventCache.length == 1) {
+            if (pointerEventCache.length === 1) {
                 transformation.translation.x += e.offsetX - pointerX;
                 transformation.translation.y += e.offsetY - pointerY;
+                pointerX = e.offsetX;
+                pointerY = e.offsetY;
             }
 
-            pointerX = e.offsetX;
-            pointerY = e.offsetY;
 
             // Find this event in the cache and update its record with this event
             for (var i = 0; i < pointerEventCache.length; i++) {
@@ -126,19 +126,16 @@ function addEventListenersPointer(
 
     document.addEventListener('pointerup', e => {
 
-        if (pointerDown) {
-            transformation.translation.x += e.offsetX - pointerX;
-            transformation.translation.y += e.offsetY - pointerY;
-            pattern(ctx, transformation);
-            pointerDown = false;
-
-        }
-
         remove_event(e, pointerEventCache);
 
         // If the number of pointers down is less than two then reset diff tracker
         if (pointerEventCache.length < 2) {
             previousDistance = -1;
+        }
+
+        if (pointerEventCache.length === 1) {
+            pointerX = pointerEventCache[0].offsetX;
+            pointerY = pointerEventCache[0].offsetY;
         }
 
     });
