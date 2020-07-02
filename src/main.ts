@@ -125,19 +125,22 @@ function addEventListenersPointer(
     });
 
     document.addEventListener('pointerup', e => {
+
         if (pointerDown) {
             transformation.translation.x += e.offsetX - pointerX;
             transformation.translation.y += e.offsetY - pointerY;
             pattern(ctx, transformation);
             pointerDown = false;
 
-            remove_event(e, pointerEventCache);
-
-            // If the number of pointers down is less than two then reset diff tracker
-            if (pointerEventCache.length < 2) {
-                previousDistance = -1;
-            }
         }
+
+        remove_event(e, pointerEventCache);
+
+        // If the number of pointers down is less than two then reset diff tracker
+        if (pointerEventCache.length < 2) {
+            previousDistance = -1;
+        }
+
     });
 
     document.addEventListener('wheel', e => {
