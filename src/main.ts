@@ -68,7 +68,7 @@ function addEventListenersPointer(
     let pointerX = 0;
     let pointerY = 0;
     let pointerDown = false;
-    let prevDiff = -1;
+    let previousDistance = -1;
 
 
     document.addEventListener('pointerdown', e => {
@@ -99,22 +99,22 @@ function addEventListenersPointer(
                 // Calculate the distance between the two pointers
                 let point0 = new Vector(pointerEventCache[0].clientX, pointerEventCache[0].clientY);
                 let point1 = new Vector(pointerEventCache[1].clientX, pointerEventCache[1].clientY);
-                var curDiff = point0.subtract(point1).norm();
+                var currentDistance = point0.subtract(point1).norm();
                 let center = point0.add(point1).scale(0.5);
 
-                if (prevDiff > 0) {
-                    if (curDiff > prevDiff) {
+                if (previousDistance > 0) {
+                    if (currentDistance > (previousDistance + 5)) {
                         // The distance between the two pointers has increased, zoom in
                         zoom(transformation, center, 1.02)
                     }
-                    if (curDiff < prevDiff) {
+                    if (currentDistance < (previousDistance - 5)) {
                         // The distance between the two pointers has decreased, zoom out
-                        zoom(transformation, center, 1.02)
+                        zoom(transformation, center, 0.98)
                     }
                 }
 
                 // Cache the distance for the next move event 
-                prevDiff = curDiff;
+                previousDistance = currentDistance;
             }
 
             pattern(ctx, transformation);
@@ -132,7 +132,7 @@ function addEventListenersPointer(
 
             // If the number of pointers down is less than two then reset diff tracker
             if (pointerEventCache.length < 2) {
-                prevDiff = -1;
+                previousDistance = -1;
             }
         }
     });
