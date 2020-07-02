@@ -18,7 +18,7 @@ if (canvas != null) {
         pattern(ctx, transformation);
 
         addEventListenersKeyboard(document, ctx, pattern, transformation, canvasRectangle.center());
-        addEventListenersMouse(document, ctx, pattern, transformation);
+        addEventListenersPointer(document, ctx, pattern, transformation);
     }
 }
 
@@ -59,36 +59,36 @@ function addEventListenersKeyboard(
 }
 
 
-function addEventListenersMouse(document: Document, ctx: CanvasRenderingContext2D, pattern: Drawable, transformation: Transformation) {
+function addEventListenersPointer(document: Document, ctx: CanvasRenderingContext2D, pattern: Drawable, transformation: Transformation) {
 
-    let mouseX = 0;
-    let mouseY = 0;
-    let mouseDown = false;
+    let pointerX = 0;
+    let pointerY = 0;
+    let pointerDown = false;
 
 
-    document.addEventListener('mousedown', e => {
-        mouseX = e.offsetX;
-        mouseY = e.offsetY;
-        mouseDown = true;
+    document.addEventListener('pointerdown', e => {
+        pointerX = e.offsetX;
+        pointerY = e.offsetY;
+        pointerDown = true;
     });
 
 
-    document.addEventListener('mousemove', e => {
-        if (mouseDown) {
-            transformation.translation.x += e.offsetX - mouseX;
-            transformation.translation.y += e.offsetY - mouseY;
+    document.addEventListener('pointermove', e => {
+        if (pointerDown) {
+            transformation.translation.x += e.offsetX - pointerX;
+            transformation.translation.y += e.offsetY - pointerY;
             pattern(ctx, transformation);
-            mouseX = e.offsetX;
-            mouseY = e.offsetY;
+            pointerX = e.offsetX;
+            pointerY = e.offsetY;
         }
     });
 
-    document.addEventListener('mouseup', e => {
-        if (mouseDown) {
-            transformation.translation.x += e.offsetX - mouseX;
-            transformation.translation.y += e.offsetY - mouseY;
+    document.addEventListener('pointerup', e => {
+        if (pointerDown) {
+            transformation.translation.x += e.offsetX - pointerX;
+            transformation.translation.y += e.offsetY - pointerY;
             pattern(ctx, transformation);
-            mouseDown = false;
+            pointerDown = false;
         }
     });
 
