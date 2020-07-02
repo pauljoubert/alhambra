@@ -81,8 +81,11 @@ function addEventListenersPointer(
 
     document.addEventListener('pointermove', e => {
         if (pointerDown) {
-            transformation.translation.x += e.offsetX - pointerX;
-            transformation.translation.y += e.offsetY - pointerY;
+            if (pointerEventCache.length == 1) {
+                transformation.translation.x += e.offsetX - pointerX;
+                transformation.translation.y += e.offsetY - pointerY;
+            }
+
             pointerX = e.offsetX;
             pointerY = e.offsetY;
 
@@ -105,11 +108,11 @@ function addEventListenersPointer(
                 if (previousDistance > 0) {
                     if (currentDistance > (previousDistance + 1)) {
                         // The distance between the two pointers has increased, zoom in
-                        zoom(transformation, center, 1.02)
+                        zoom(transformation, center, 1.01)
                     }
                     if (currentDistance < (previousDistance - 1)) {
                         // The distance between the two pointers has decreased, zoom out
-                        zoom(transformation, center, 0.98)
+                        zoom(transformation, center, 0.99)
                     }
                 }
 
