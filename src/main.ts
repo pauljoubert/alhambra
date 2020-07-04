@@ -106,8 +106,10 @@ function addEventListenersPointer(
                 let center = point0.add(point1).scale(0.5);
 
                 if (previousDistance > 0) {
-                    const ratio = currentDistance / previousDistance;
-                    zoom(transformation, center, ratio / 5);
+                    let ratio = currentDistance / previousDistance;
+                    ratio = Math.max(ratio, 0.98);
+                    ratio = Math.min(ratio, 1.02);
+                    zoom(transformation, center, ratio);
                 }
 
                 // Cache the distance for the next move event 
