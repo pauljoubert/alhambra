@@ -105,7 +105,7 @@ export class Rectangle {
     }
 
     containingSquare(): Rectangle {
-        const halfSide = Math.max(this.width(), this.height());
+        const halfSide = Math.max(this.width(), this.height()) / 2;
         const center = this.center();
         return new Rectangle(
             new Vector(center.x - halfSide, center.y - halfSide),
