@@ -6,8 +6,11 @@ import { Vector, Basis, Rectangle } from "./typing";
  */
 export function generateCovering(boundingBox: Rectangle, basis: Basis, canvas: Rectangle): Array<Vector> {
 
+    const boundingBoxSquare = boundingBox.containingSquare();
+    const canvasSquare = canvas.containingSquare();
+
     function translatedBoundingBoxOverlapsCanvas(coefficients: Vector) {
-        return boundingBox.translate(basis.fromCoefficients(coefficients)).overlaps(canvas);
+        return boundingBoxSquare.translate(basis.fromCoefficients(coefficients)).overlaps(canvasSquare);
     }
 
     const origin = new Vector(0, 0);

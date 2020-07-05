@@ -104,6 +104,15 @@ export class Rectangle {
         ); 
     }
 
+    containingSquare(): Rectangle {
+        const halfSide = Math.max(this.width(), this.height());
+        const center = this.center();
+        return new Rectangle(
+            new Vector(center.x - halfSide, center.y - halfSide),
+            new Vector(center.x + halfSide, center.y + halfSide)
+        );
+    }
+
     /**
      * Return true if another rectangle overlaps with this one.
      * @param r Another rectangle
