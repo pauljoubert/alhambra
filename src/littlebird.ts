@@ -19,7 +19,7 @@ export function createLittleBirdPattern(canvas: Rectangle): Drawable {
     const starTilingReference = createTiling(littleBirdStar, new Basis(new Vector(0, 12), new Vector(2 * sqrt3, 0)), canvas);
     const wingTilingReference = createTiling(littleBirdWing, new Basis(new Vector(-sqrt3, 3), new Vector(8 * sqrt3, 0)), canvas);
 
-    let tilings: Drawable[] = [];
+    const tilings: Drawable[] = [];
 
     for (let i = 0; i < 4; i++) {
         let starTiling = withFill(starTilingReference, colours[colour_order[i]]);
@@ -46,8 +46,7 @@ export function createLittleBirdPattern(canvas: Rectangle): Drawable {
 
 const littleBirdStar: Unit = {
     draw: function (ctx: CanvasRenderingContext2D) {
-        let r = sqrt3 - 1;
-
+        const r = sqrt3 - 1;
         ctx.moveTo(r, 0);
         ctx.save();
         for (let i = 0; i < 6; i++) {
@@ -65,7 +64,6 @@ const littleBirdStar: Unit = {
 const littleBirdWing: Unit = {
     draw: function (ctx: CanvasRenderingContext2D) {
         const r = sqrt3 - 1;
-
         ctx.save();
         ctx.translate(0, 2);
         for (let i = 0; i < 3; i++) {
@@ -77,11 +75,10 @@ const littleBirdWing: Unit = {
             ctx.lineTo(0.5 * r, r * sqrt3 / 2);
             ctx.rotate((2 / 3) * Math.PI);
         }
-
         ctx.restore();
     },
     boundingBox: (function () {
-        let r = 3 * sqrt3 / 2;
+        const r = 3 * sqrt3 / 2;
         return new Rectangle(new Vector(-r, -r + 2), new Vector(r, r + 2));
     })()
 }

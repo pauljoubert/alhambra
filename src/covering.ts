@@ -32,7 +32,7 @@ export function generateCovering(boundingBox: Rectangle, basis: Basis, canvas: R
 
 
 function searchHorizontal(initial: Vector, valid: (v: Vector) => boolean, ascending = true): Vector {
-    let v = initial.copy();
+    const v = initial.copy();
     const dx = ascending ? 1 : -1;
     v.x += dx;
     while (valid(v)) {
@@ -76,8 +76,8 @@ function* createSearchVertical(initial: HorizontalRange, valid: (v: Vector) => b
         const y = current.left.y + (ascending ? 1 : -1);
         const left = new Vector(current.left.x, y);
         const right = new Vector(current.right.x, y);
-        let leftMost = searchLeft(left, valid);
-        let rightMost = searchRight(right, valid);
+        const leftMost = searchLeft(left, valid);
+        const rightMost = searchRight(right, valid);
 
         while (!valid(leftMost) && leftMost.x < rightMost.x) {
             leftMost.x++;

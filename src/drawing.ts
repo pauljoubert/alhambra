@@ -12,14 +12,14 @@ export function createTiling(unitOriginal: Unit, basisOriginal: Basis, canvas: R
     return (ctx, transformation) => {
 
         let unit = transformUnit(unitOriginal, transformation);
-        let basis = basisOriginal.scale(transformation.scaling);
+        const basis = basisOriginal.scale(transformation.scaling);
 
         // Translate unit by vector in span of basis to move bounding box close to canvas center.
-        let difference = canvas.center().subtract(unit.boundingBox.center());
+        const difference = canvas.center().subtract(unit.boundingBox.center());
         const roundedDifference = basis.fromCoefficients(basis.toCoefficients(difference).round());
         unit = transformUnit(unit, new Transformation(roundedDifference, 1));
 
-        let debug = false;
+        const debug = false;
         if (debug) {
             drawRectangle(ctx, unit.boundingBox);
         }

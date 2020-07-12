@@ -56,8 +56,8 @@ export class Basis {
      * @param z Arbitrary 2D vector
      */
     toCoefficients(z: Vector): Vector {
-        let alpha = (this.w.x * z.y - this.w.y * z.x) / (this.w.x * this.v.y - this.w.y * this.v.x);
-        let beta = (this.v.x * z.y - this.v.y * z.x) / (this.v.x * this.w.y - this.v.y * this.w.x);
+        const alpha = (this.w.x * z.y - this.w.y * z.x) / (this.w.x * this.v.y - this.w.y * this.v.x);
+        const beta = (this.v.x * z.y - this.v.y * z.x) / (this.v.x * this.w.y - this.v.y * this.w.x);
         return new Vector(alpha, beta);
     }
 
@@ -118,8 +118,8 @@ export class Rectangle {
      * @param r Another rectangle
      */
     overlaps(r: Rectangle): boolean {
-        let overlapsX = (this.topLeft.x <= r.bottomRight.x) && (r.topLeft.x <= this.bottomRight.x);
-        let overlapsY = (this.topLeft.y <= r.bottomRight.y) && (r.topLeft.y <= this.bottomRight.y);
+        const overlapsX = (this.topLeft.x <= r.bottomRight.x) && (r.topLeft.x <= this.bottomRight.x);
+        const overlapsY = (this.topLeft.y <= r.bottomRight.y) && (r.topLeft.y <= this.bottomRight.y);
         return overlapsX && overlapsY;
     }
 

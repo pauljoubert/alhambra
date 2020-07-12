@@ -12,8 +12,8 @@ if (canvas != null) {
         canvas.height = window.innerHeight;
 
         const canvasRectangle = new Rectangle(new Vector(0, 0), new Vector(canvas.width, canvas.height));
-        let pattern = createLittleBirdPattern(canvasRectangle);
-        let transformation = new Transformation(new Vector(600, 400), 40);
+        const pattern = createLittleBirdPattern(canvasRectangle);
+        const transformation = new Transformation(new Vector(600, 400), 40);
 
         pattern(ctx, transformation);
 
@@ -31,7 +31,7 @@ function addEventListenersKeyboard(
 
     document.addEventListener('keydown', (event) => {
 
-        let shiftSpeed = 10
+        const shiftSpeed = 10
 
         switch (event.code) {
             case 'Minus':
