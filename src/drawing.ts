@@ -93,9 +93,8 @@ function transformUnit(unit: Unit, transformation: Transformation): Unit {
 }
 
 
-function drawRectangle(ctx: CanvasRenderingContext2D, rectangle: Rectangle, lineWidth = 5, strokeStyle = "blue") {
+function drawRectangle(ctx: CanvasRenderingContext2D, rectangle: Rectangle, lineWidth = 5, strokeStyle = "red") {
     ctx.lineWidth = lineWidth;
     ctx.strokeStyle = strokeStyle;
-    ctx.rect(rectangle.topLeft.x, rectangle.topLeft.y, rectangle.width(), rectangle.height());
-    ctx.stroke();
+    ctx.strokeRect(rectangle.topLeft.x, rectangle.topLeft.y, rectangle.width(), rectangle.height());
 }
