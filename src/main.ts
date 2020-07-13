@@ -19,45 +19,8 @@ if (canvas != null) {
 
         const pointerEventCache = new Array<PointerEvent>();
 
-        addEventListenersKeyboard(document, ctx, pattern, transformation, canvasRectangle.center());
         addEventListenersPointer(document, ctx, pattern, transformation, pointerEventCache);
     }
-}
-
-
-function addEventListenersKeyboard(
-    document: Document, ctx: CanvasRenderingContext2D, pattern: Drawable, transformation: Transformation, canvasCenter: Vector
-) {
-
-    document.addEventListener('keydown', (event) => {
-
-        const shiftSpeed = 10
-
-        switch (event.code) {
-            case 'Minus':
-                zoom(transformation, canvasCenter, 0.98)
-                break;
-            case 'Equal':
-                zoom(transformation, canvasCenter, 1.02)
-                break;
-            case 'ArrowRight':
-                transformation.translation.x += shiftSpeed;
-                break;
-            case 'ArrowLeft':
-                transformation.translation.x -= shiftSpeed;
-                break;
-            case 'ArrowUp':
-                transformation.translation.y -= shiftSpeed;
-                break;
-            case 'ArrowDown':
-                transformation.translation.y += shiftSpeed;
-                break;
-        }
-
-        pattern(ctx, transformation);
-
-    }, false);
-
 }
 
 
