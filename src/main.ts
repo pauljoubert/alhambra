@@ -122,6 +122,8 @@ function addEventListenersPointer(
 
     document.addEventListener('pointerup', e => {
 
+        pointerDown = false;
+
         remove_event(e, pointerEventCache);
 
         // If the number of pointers down is less than two then reset diff tracker
